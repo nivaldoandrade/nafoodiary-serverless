@@ -42,4 +42,10 @@ export default defineConfig([
   },
   { files: ['**/*.{js,mjs,cjs,ts,mts,cts}'], plugins: { js }, extends: ['js/recommended'], languageOptions: { globals: globals.node } },
   tseslint.configs.recommended,
+  {
+    rules: {
+      '@typescript-eslint/no-namespace': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
 ]);

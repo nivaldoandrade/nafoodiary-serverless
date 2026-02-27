@@ -19,19 +19,12 @@ package:
 
 build:
   esbuild:
-    bundle: true
-    minify: true
-    sourcemap: false
-    exclude:
-      - '@aws-sdk/*'
-    external:
-      - '@aws-sdk/*'
-
+    configFile: ./esbuild.config.mjs
 
 functions:
   hello:
-    handler: src/hello.handler
+    handler: src/main/functions/hello.handler
     events:
       - httpApi:
-          path: /
-          method: GET
+          path: /hello/{id}
+          method: POST
