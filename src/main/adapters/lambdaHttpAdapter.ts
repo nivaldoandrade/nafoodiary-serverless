@@ -3,17 +3,19 @@ import { $ZodError } from 'zod/v4/core';
 
 import { Controller } from '@application/contracts/Controller';
 import { HttpError } from '@application/errors/http/HttpError';
+import { Constructor, Registry } from '@kernel/di/Registry';
 import { lambdaHttpBodyParser } from '@main/utils/lambdaHttpBodyParser';
 import { lambdaHttpErrorResponse } from '@main/utils/lambdaHttpErrorResponse';
 import { lambdaHttpResponse } from '@main/utils/lambdaHttpResponse';
 
-export function lambdaHttpAdapter(controller: Controller) {
+export function lambdaHttpAdapter(controllerImpl: Constructor<Controller>) {
   return async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
-
     try {
       const body = lambdaHttpBodyParser(event.body);
       const params = event.pathParameters ?? {};
       const queryParams = event.queryStringParameters ?? {};
+
+      const controller = Registry.getInstance().resolver(controllerImpl);
 
       const { statusCode, body: resultBody } = await controller.execute({
         body,

@@ -1,8 +1,22 @@
 
-type Constructor<T = any> = new (...args: any[]) => T;
+export type Constructor<T = any> = new (...args: any[]) => T;
 
 export class Registry {
-  private providers = new Map<string, Registry.Provider>();
+  private static instance: Registry;
+
+  static getInstance() {
+    if (this.instance) {
+      return this.instance;
+    }
+
+    this.instance = new Registry();
+    return this.instance;
+  }
+
+  private constructor() { }
+
+  private providers = new Map<string, Constructor>();
+  private instanceCache = new Map<string, unknown>();
 
   register(impl: Constructor) {
     const token = impl.name;
@@ -11,35 +25,33 @@ export class Registry {
       throw new Error(`${token} already in registered.`);
     }
 
-    const deps: Constructor[] = Reflect.getMetadata('design:paramtypes', impl) || [];
-
-    this.providers.set(token, {
-      impl,
-      deps,
-    });
+    this.providers.set(token, impl);
   }
 
   resolver<T>(impl: Constructor<T>): T {
     const token = impl.name;
-    const provider = this.providers.get(token);
 
-    if (!provider) {
-      throw new Error(`${token} is not registered.`);
+    if (this.instanceCache.has(token)) {
+      return this.instanceCache.get(token) as T;
     }
 
-    const deps = provider.deps.map(dep => {
+    const constructor = this.providers.get(token);
+
+    if (!constructor) {
+      throw new Error(`${token} is not registered.`);
+    }
+    const paramTypes: Constructor[] = Reflect.getMetadata('design:paramtypes', constructor) || [];
+
+    const deps = paramTypes.map(dep => {
+
       return this.resolver(dep);
     });
 
-    const instance = new provider.impl(...deps);
+    const instance = new constructor(...deps);
+
+    this.instanceCache.set(token, instance);
 
     return instance;
   }
 }
 
-namespace Registry {
-  export type Provider = {
-    impl: Constructor;
-    deps: Constructor[];
-  }
-}
