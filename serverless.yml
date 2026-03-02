@@ -16,15 +16,15 @@ provider:
 package:
   individually: true
 
-
 build:
   esbuild:
     configFile: ./esbuild.config.mjs
 
+resources:
+  - ${file(./sls/resources/userPool.yaml)}
+
 functions:
-  hello:
-    handler: src/main/functions/hello.handler
-    events:
-      - httpApi:
-          path: /hello/{id}
-          method: POST
+  - ${file(./sls/functions/hello.yaml)}
+  - ${file(./sls/functions/auth.yaml)}
+
+
