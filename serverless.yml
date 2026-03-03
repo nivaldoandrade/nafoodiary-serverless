@@ -14,6 +14,8 @@ provider:
   memorySize: 128
   region: sa-east-1
   environment: ${file(./sls/config/env.yml)}
+  iam:
+    role: ${file(./sls/config/role.yml)}
   # Uncomment to easily set up a custom domain. Read the docs for more details:
   # https://www.serverless.com/framework/docs/providers/aws/guide/domains
   # domain: api.example.com
@@ -27,6 +29,7 @@ build:
 
 resources:
   - ${file(./sls/resources/userPool.yaml)}
+  - ${file(./sls/resources/mainTable.yml)}
 
 functions:
   - ${file(./sls/functions/hello.yaml)}
