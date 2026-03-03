@@ -12,9 +12,11 @@ export class SignUpUseCase {
 
     await this.authGateway.signUp({ email, password });
 
+    const { accessToken, refreshToken } = await this.authGateway.signIn({ email, password });
+
     return {
-      accessToken: 'AccessToken gerado...',
-      refreshToken: 'RefreshToken gerado...',
+      accessToken,
+      refreshToken,
     };
   }
 }
