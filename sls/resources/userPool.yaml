@@ -27,6 +27,7 @@ Resources:
       Properties:
         ClientName: ${self:service}-${sls:stage}-UserPoolClient
         UserPoolId: !Ref UserPool
+        GenerateSecret: true
         ExplicitAuthFlows:
           - ALLOW_USER_PASSWORD_AUTH
         AccessTokenValidity: 1
