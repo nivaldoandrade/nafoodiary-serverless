@@ -54,8 +54,6 @@ export class AuthGateway {
       throw new Error(`Error signup user: ${email}`);
     }
 
-    // Save externalId in the dynamoBD table
-
     return {
       externalId,
     };
