@@ -1,0 +1,68 @@
+import { Account } from '@application/entities/Account';
+
+export class AccountItem {
+  static readonly type = 'ACCOUNT';
+
+  readonly keys: AccountItem.Keys;
+
+  private constructor(private readonly attrs: AccountItem.Attributes) {
+    this.keys = {
+      PK: AccountItem.getPK(attrs.id),
+      SK: AccountItem.getPK(attrs.id),
+      GSI1PK: AccountItem.getPK(attrs.email),
+      GSI1SK: AccountItem.getPK(attrs.email),
+    };
+  }
+
+  static fromEntity(account: Account): AccountItem {
+    return new AccountItem({
+      ...account,
+      createdAt: account.createdAt.toISOString(),
+    });
+  }
+
+  getItem(): AccountItem.Item {
+    return {
+      ...this.keys,
+      ...this.attrs,
+      type: AccountItem.type,
+    };
+  }
+
+  static getPK(accountId: string): AccountItem.Keys['PK'] {
+    return `ACCOUNT#${accountId}`;
+  };
+
+  static getSK(accountId: string): AccountItem.Keys['SK'] {
+    return `ACCOUNT#${accountId}`;
+  };
+
+  static getGSI1PK(email: string): AccountItem.Keys['GSI1PK'] {
+    return `ACCOUNT#${email}`;
+  };
+
+  static getGSI1SK(email: string): AccountItem.Keys['GSI1SK'] {
+    return `ACCOUNT#${email}`;
+  };
+}
+
+namespace AccountItem {
+
+  export type Keys = {
+    PK: `ACCOUNT#${string}`;
+    SK: `ACCOUNT#${string}`;
+    GSI1PK: `ACCOUNT#${string}`;
+    GSI1SK: `ACCOUNT#${string}`;
+  }
+
+  export type Attributes = {
+    id: string;
+    email: string;
+    externalId: string;
+    createdAt: string;
+  }
+
+  export type Item = Keys & Attributes & {
+    type: 'ACCOUNT'
+  }
+}
