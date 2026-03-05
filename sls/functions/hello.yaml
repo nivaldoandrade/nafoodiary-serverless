@@ -4,3 +4,5 @@ hello:
     - httpApi:
         path: /hello/{id}
         method: POST
+        authorizer:
+          name: CognitoAuthorizer
