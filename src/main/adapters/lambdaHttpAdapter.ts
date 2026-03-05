@@ -2,6 +2,7 @@ import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { $ZodError } from 'zod/v4/core';
 
 import { Controller } from '@application/contracts/Controller';
+import { ApplicationError } from '@application/errors/application/ApplicationError';
 import { HttpError } from '@application/errors/http/HttpError';
 import { Constructor, Registry } from '@kernel/di/Registry';
 import { lambdaHttpBodyParser } from '@main/utils/lambdaHttpBodyParser';
@@ -39,6 +40,14 @@ export function lambdaHttpAdapter(controllerImpl: Constructor<Controller>) {
 
       if (error instanceof HttpError) {
         return lambdaHttpErrorResponse(error);
+      }
+
+      if (error instanceof ApplicationError) {
+        return lambdaHttpErrorResponse({
+          statusCode: error.statusCode ?? 400,
+          code: error.code,
+          message: error.message,
+        });
       }
 
       console.log(error);

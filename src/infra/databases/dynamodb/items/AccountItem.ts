@@ -21,6 +21,13 @@ export class AccountItem {
     });
   }
 
+  static toEntity(accountItemAttr: AccountItem.Attributes): Account {
+    return new Account({
+      ...accountItemAttr,
+      createdAt: new Date(accountItemAttr.createdAt),
+    });
+  }
+
   getItem(): AccountItem.Item {
     return {
       ...this.keys,
@@ -46,7 +53,7 @@ export class AccountItem {
   };
 }
 
-namespace AccountItem {
+export namespace AccountItem {
 
   export type Keys = {
     PK: `ACCOUNT#${string}`;
