@@ -6,13 +6,12 @@ import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(helloSchema)
-export class HelloController extends Controller {
-
+export class HelloController extends Controller<'private'> {
   constructor(private readonly helloUseCase: HelloUseCase) {
     super();
   }
 
-  async handler(request: Controller.Request<HelloBody>): Promise<Controller.Response> {
+  protected async handler(request: Controller.Request<'private', HelloBody>): Promise<Controller.Response> {
 
     const result = await this.helloUseCase.execute({
       email: request.body.email,
@@ -20,8 +19,12 @@ export class HelloController extends Controller {
 
     return {
       statusCode: 200,
-      body: result,
+      body: {
+        accountId: request.accountId,
+        result,
+      },
     };
   }
 
 }
+

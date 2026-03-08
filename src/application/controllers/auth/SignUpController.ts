@@ -6,7 +6,7 @@ import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(signUpSchema)
-export class SignUpController extends Controller {
+export class SignUpController extends Controller<'public'> {
 
   constructor(
     private readonly signUpUseCase: SignUpUseCase,
@@ -14,7 +14,9 @@ export class SignUpController extends Controller {
     super();
   }
 
-  protected async handler(request: Controller.Request<SignUpBody>): Promise<Controller.Response<SignUpController.Response>> {
+  protected async handler(
+    request: Controller.Request<'public', SignUpBody>,
+  ): Promise<Controller.Response<SignUpController.Response>> {
 
     const { account } = request.body;
 

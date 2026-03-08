@@ -3,6 +3,7 @@ import { EmailAlreadyInUse } from '@application/errors/application/EmailAlreadyI
 import { AccountsRepository } from '@infra/databases/dynamodb/AccountsRepository';
 import { AuthGateway } from '@infra/gateways/AuthGateway';
 import { Injectable } from '@kernel/decorators/Injectable';
+import { generateUniqueId } from '@shared/utils/generateUniqueId';
 
 @Injectable()
 export class SignUpUseCase {
@@ -21,9 +22,21 @@ export class SignUpUseCase {
       throw new EmailAlreadyInUse();
     }
 
-    const { externalId } = await this.authGateway.signUp({ email, password });
+    const accountId = generateUniqueId();
 
-    const account = new Account({ email, externalId });
+    const { externalId } = await this.authGateway.signUp({
+      internalId: accountId,
+      email,
+      password,
+    });
+
+    const account = new Account({
+      id: accountId,
+      email,
+      externalId,
+    });
+
+    account.externalId = externalId;
 
     await this.accountsRepository.create(account);
 
