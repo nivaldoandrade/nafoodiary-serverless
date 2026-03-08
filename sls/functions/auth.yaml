@@ -26,6 +26,13 @@ forgotPassword:
         path: /auth/forgot-password
         method: POST
 
+confirmationForgotPassword:
+  handler: src/main/functions/auth/confirmationForgotPassword.handler
+  events:
+    - httpApi:
+        path: /auth/confirmation-forgot-password
+        method: POST
+
 preSignUpTrigger:
   handler: src/main/functions/auth/preSignUpTrigger.handler
   events:
