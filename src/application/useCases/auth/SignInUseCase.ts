@@ -1,3 +1,4 @@
+import { InvalidCredentials } from '@application/errors/application/InvalidCredentials';
 import { AuthGateway } from '@infra/gateways/AuthGateway';
 import { Injectable } from '@kernel/decorators/Injectable';
 
@@ -11,12 +12,16 @@ export class SignInUseCase {
   async execute(
     { email, password }: SignInUseCase.Input,
   ): Promise<SignInUseCase.Output> {
-    const { accessToken, refreshToken } = await this.authGateway.signIn({ email, password });
+    try {
+      const { accessToken, refreshToken } = await this.authGateway.signIn({ email, password });
 
-    return {
-      accessToken,
-      refreshToken,
-    };
+      return {
+        accessToken,
+        refreshToken,
+      };
+    } catch {
+      throw new InvalidCredentials();
+    }
   }
 }
 
