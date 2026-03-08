@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-import { InitiateAuthCommand, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { GetTokensFromRefreshTokenCommand, InitiateAuthCommand, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient } from '@infra/clients/cognitoClient';
 import { Injectable } from '@kernel/decorators/Injectable';
 import { AppConfig } from '@shared/config/AppConfig';
@@ -63,6 +63,25 @@ export class AuthGateway {
 
     return {
       externalId,
+    };
+  }
+
+  async refreshToken(refreshToken: string): Promise<AuthGateway.SignIn['result']> {
+    const getTokensCommand = new GetTokensFromRefreshTokenCommand({
+      RefreshToken: refreshToken,
+      ClientId: this.config.envAuth.cognito.clientId,
+      ClientSecret: this.config.envAuth.cognito.clientSecret,
+    });
+
+    const { AuthenticationResult } = await cognitoClient.send(getTokensCommand);
+
+    if (!AuthenticationResult?.AccessToken || !AuthenticationResult.RefreshToken) {
+      throw new Error('rror refresh token user.');
+    }
+
+    return {
+      accessToken: AuthenticationResult.AccessToken,
+      refreshToken: AuthenticationResult.RefreshToken,
     };
   }
 
