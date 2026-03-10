@@ -17,6 +17,7 @@ provider:
   iam:
     role: ${file(./sls/config/role.yml)}
   httpApi:
+    disableDefaultEndpoint: ${env:APIGATEWAY_DEFAULT_ENDPOINT_DISABLE, false}
     authorizers:
       CognitoAuthorizer:
         type: jwt
@@ -24,10 +25,15 @@ provider:
         issuerUrl: !GetAtt UserPool.ProviderURL
         audience:
           - !Ref UserPoolClient
-
   # Uncomment to easily set up a custom domain. Read the docs for more details:
   # https://www.serverless.com/framework/docs/providers/aws/guide/domains
-  # domain: api.example.com
+  domain:
+    enabled: ${file(./sls/config/domainEnabled.js):enabled}
+    name: ${env:API_DOMAIN_NAME, ''}
+    certificateArn: ${env:API_CERTIFICATE_ARN, ''}
+    createRoute53Record: false
+    apiType: http
+    endpointType: regional
 
 package:
   individually: true
