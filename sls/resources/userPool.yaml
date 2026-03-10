@@ -22,6 +22,11 @@ Resources:
             RequireNumbers: false
             RequireSymbols: false
             RequireUppercase: false
+        EmailConfiguration:
+          EmailSendingAccount: DEVELOPER
+          From: ${env:COGNITO_EMAIL}
+          ReplyToEmailAddress: ${env:COGNITO_EMAIL_TO_REPLY}
+          SourceArn: ${env:SES_SOURCE_ARN}
         Schema:
           - Name: internalId
             Mutable: false
