@@ -10,11 +10,15 @@ export abstract class UnitOfWork {
   }
 
   protected async commit() {
-    const command = new TransactWriteCommand({
-      TransactItems: this.transactItems,
-    });
+    try {
+      const command = new TransactWriteCommand({
+        TransactItems: this.transactItems,
+      });
 
-    await dynamodbClient.send(command);
+      await dynamodbClient.send(command);
+    } finally {
+      this.transactItems = [];
+    }
   }
 
 }
