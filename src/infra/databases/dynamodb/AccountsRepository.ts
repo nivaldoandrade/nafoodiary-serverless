@@ -1,5 +1,5 @@
 import { Account } from '@application/entities/Account';
-import { PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, PutCommandInput, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamodbClient } from '@infra/clients/dynamodbClient';
 import { AccountItem } from '@infra/databases/dynamodb/items/AccountItem';
 import { Injectable } from '@kernel/decorators/Injectable';
@@ -38,13 +38,20 @@ export class AccountsRepository {
     return AccountItem.toEntity(accountItem);
   }
 
-  async create(account: Account): Promise<void> {
+  getPutCommandInput(account: Account): PutCommandInput {
     const accountItem = AccountItem.fromEntity(account);
 
-    const command = new PutCommand({
+    return {
       TableName: this.config.db.dynamodb.mainTable,
       Item: accountItem.getItem(),
-    });
+    };
+  }
+
+  async create(account: Account): Promise<void> {
+
+    const putCommandInput = this.getPutCommandInput(account);
+
+    const command = new PutCommand(putCommandInput);
 
     await dynamodbClient.send(command);
   }
