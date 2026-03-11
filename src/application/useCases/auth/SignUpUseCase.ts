@@ -1,6 +1,10 @@
 import { Account } from '@application/entities/Account';
+import { Goal } from '@application/entities/Goal';
+import { Profile } from '@application/entities/Profile';
 import { EmailAlreadyInUse } from '@application/errors/application/EmailAlreadyInUse';
 import { AccountsRepository } from '@infra/databases/dynamodb/AccountsRepository';
+import { GoalRepository } from '@infra/databases/dynamodb/GoalRepository';
+import { ProfileRepository } from '@infra/databases/dynamodb/ProfileRepository';
 import { AuthGateway } from '@infra/gateways/AuthGateway';
 import { Injectable } from '@kernel/decorators/Injectable';
 import { generateUniqueId } from '@shared/utils/generateUniqueId';
@@ -11,11 +15,20 @@ export class SignUpUseCase {
   constructor(
     private readonly authGateway: AuthGateway,
     private readonly accountsRepository: AccountsRepository,
+    private readonly profileRepository: ProfileRepository,
+    private readonly goalRepository: GoalRepository,
   ) { }
 
   async execute(
-    { email, password }: SignUpUseCase.Input,
+    {
+      account: accountInput,
+      profile: profileInput,
+      goal: goalInput,
+    }
+      : SignUpUseCase.Input,
   ): Promise<SignUpUseCase.Output> {
+    const { email, password } = accountInput;
+
     const emailIsAlreadyInUse = await this.accountsRepository.findByEmail(email);
 
     if (emailIsAlreadyInUse) {
@@ -38,7 +51,21 @@ export class SignUpUseCase {
 
     account.externalId = externalId;
 
-    await this.accountsRepository.create(account);
+    const profile = new Profile({
+      accountId,
+      ...profileInput,
+    });
+
+    const goal = new Goal({
+      accountId,
+      ...goalInput,
+    });
+
+    await Promise.all([
+      this.accountsRepository.create(account),
+      this.profileRepository.create(profile),
+      this.goalRepository.create(goal),
+    ]);
 
     const { accessToken, refreshToken } = await this.authGateway.signIn({ email, password });
 
@@ -52,8 +79,25 @@ export class SignUpUseCase {
 namespace SignUpUseCase {
 
   export type Input = {
-    email: string;
-    password: string;
+    account: {
+      email: string;
+      password: string;
+    },
+    profile: {
+      name: string;
+      birthDate: Date;
+      gender: Profile.Gender;
+      height: number;
+      weight: number;
+      activityLevel: Profile.ActivityLevel;
+      goal: Profile.Goal;
+    },
+    goal: {
+      calories: number;
+      proteins: number;
+      carbohydrates: number;
+      fats: number;
+    }
   }
 
   export type Output = {

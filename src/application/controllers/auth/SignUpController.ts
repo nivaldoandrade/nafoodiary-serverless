@@ -18,9 +18,9 @@ export class SignUpController extends Controller<'public'> {
     request: Controller.Request<'public', SignUpBody>,
   ): Promise<Controller.Response<SignUpController.Response>> {
 
-    const { account } = request.body;
+    const { account, goal, profile } = request.body;
 
-    const { accessToken, refreshToken } = await this.signUpUseCase.execute(account);
+    const { accessToken, refreshToken } = await this.signUpUseCase.execute({ account, goal, profile });
 
     return {
       statusCode: 201,
