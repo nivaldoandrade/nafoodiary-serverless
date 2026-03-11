@@ -1,7 +1,7 @@
 import { Account } from '@application/entities/Account';
 
 export class AccountItem {
-  static readonly type = 'ACCOUNT';
+  static readonly TYPE: AccountItem.Type = 'ACCOUNT';
 
   readonly keys: AccountItem.Keys;
 
@@ -32,7 +32,7 @@ export class AccountItem {
     return {
       ...this.keys,
       ...this.attrs,
-      type: AccountItem.type,
+      type: AccountItem.TYPE,
     };
   }
 
@@ -55,6 +55,8 @@ export class AccountItem {
 
 export namespace AccountItem {
 
+  export type Type = 'ACCOUNT';
+
   export type Keys = {
     PK: `ACCOUNT#${string}`;
     SK: `ACCOUNT#${string}`;
@@ -70,6 +72,6 @@ export namespace AccountItem {
   }
 
   export type Item = Keys & Attributes & {
-    type: 'ACCOUNT'
+    type: Type
   }
 }
