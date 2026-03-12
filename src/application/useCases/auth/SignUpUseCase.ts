@@ -1,7 +1,7 @@
 import { Account } from '@application/entities/Account';
-import { Goal } from '@application/entities/Goal';
 import { Profile } from '@application/entities/Profile';
 import { EmailAlreadyInUse } from '@application/errors/application/EmailAlreadyInUse';
+import { GoalCalculator } from '@application/services/GoalCalculator';
 import { AccountsRepository } from '@infra/databases/dynamodb/AccountsRepository';
 import { AuthGateway } from '@infra/gateways/AuthGateway';
 import { SignUpUOW } from '@infra/uow/SignUpUOW';
@@ -17,12 +17,7 @@ export class SignUpUseCase {
     private readonly signUpUOW: SignUpUOW,
   ) { }
 
-  async execute(
-    {
-      account: accountInput,
-      profile: profileInput,
-      goal: goalInput,
-    }: SignUpUseCase.Input,
+  async execute({ account: accountInput, profile: profileInput }: SignUpUseCase.Input,
   ): Promise<SignUpUseCase.Output> {
 
     const { email, password } = accountInput;
@@ -54,10 +49,7 @@ export class SignUpUseCase {
       ...profileInput,
     });
 
-    const goal = new Goal({
-      accountId,
-      ...goalInput,
-    });
+    const goal = GoalCalculator.calculate(profile);
 
     try {
       await this.signUpUOW.run({ account, goal, profile });
@@ -93,12 +85,6 @@ namespace SignUpUseCase {
       weight: number;
       activityLevel: Profile.ActivityLevel;
       goal: Profile.Goal;
-    },
-    goal: {
-      calories: number;
-      proteins: number;
-      carbohydrates: number;
-      fats: number;
     }
   }
 

@@ -18,12 +18,6 @@ export const signUpSchema = z.object({
       z.transform(date => new Date(date)),
     ),
   }),
-  goal: z.object({
-    calories: z.number().check(z.positive()),
-    proteins: z.number().check(z.positive()),
-    carbohydrates: z.number().check(z.positive()),
-    fats: z.number().check(z.positive()),
-  }),
 });
 
 export type SignUpBody = z.infer<typeof signUpSchema>;
