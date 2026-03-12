@@ -11,6 +11,7 @@ export class AppConfig {
     this.envAuth = {
       cognito: {
         clientId: env.COGNITO_CLIENT_ID,
+        userPoolId: env.COGNITO_USER_POOL_ID,
         clientSecret: env.COGNITO_CLIENT_SECRET,
       },
     };
@@ -28,6 +29,7 @@ namespace AppConfig {
   export type EnvAuth = {
     cognito: {
       clientId: string;
+      userPoolId: string;
       clientSecret: string;
     }
   }

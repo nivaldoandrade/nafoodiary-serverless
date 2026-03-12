@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-import { ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, InitiateAuthCommand, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { AdminDeleteUserCommand, ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, InitiateAuthCommand, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient } from '@infra/clients/cognitoClient';
 import { Injectable } from '@kernel/decorators/Injectable';
 import { AppConfig } from '@shared/config/AppConfig';
@@ -108,6 +108,15 @@ export class AuthGateway {
       Username: email,
       Password: password,
       ConfirmationCode: confirmationCode,
+    });
+
+    await cognitoClient.send(command);
+  }
+
+  async deleteUser(email: string) {
+    const command = new AdminDeleteUserCommand({
+      UserPoolId: this.config.envAuth.cognito.userPoolId,
+      Username: email,
     });
 
     await cognitoClient.send(command);

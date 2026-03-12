@@ -59,14 +59,22 @@ export class SignUpUseCase {
       ...goalInput,
     });
 
-    await this.signUpUOW.run({ account, goal, profile });
+    try {
+      await this.signUpUOW.run({ account, goal, profile });
 
-    const { accessToken, refreshToken } = await this.authGateway.signIn({ email, password });
+      const { accessToken, refreshToken } = await this.authGateway.signIn({ email, password });
 
-    return {
-      accessToken,
-      refreshToken,
-    };
+      return {
+        accessToken,
+        refreshToken,
+      };
+    } catch (error) {
+      if (externalId) {
+        await this.authGateway.deleteUser(email);
+      }
+
+      throw error;
+    }
   }
 }
 
