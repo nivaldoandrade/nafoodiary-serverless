@@ -49,5 +49,6 @@ resources:
 functions:
   - ${file(./sls/functions/hello.yaml)}
   - ${file(./sls/functions/auth.yaml)}
+  - ${file(./sls/functions/account.yml)}
 
 

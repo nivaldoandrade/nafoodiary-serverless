@@ -1,0 +1,9 @@
+me:
+  handler: src/main/functions/account/me.handler
+  events:
+    - httpApi:
+        path: /me
+        method: get
+        authorizer:
+          name: CognitoAuthorizer
+
