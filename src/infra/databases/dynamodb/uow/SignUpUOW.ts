@@ -4,7 +4,7 @@ import { Profile } from '@application/entities/Profile';
 import { AccountsRepository } from '@infra/databases/dynamodb/AccountsRepository';
 import { GoalRepository } from '@infra/databases/dynamodb/GoalRepository';
 import { ProfileRepository } from '@infra/databases/dynamodb/ProfileRepository';
-import { UnitOfWork } from '@infra/uow/UnitOfWork';
+import { UnitOfWork } from '@infra/databases/dynamodb/uow/UnitOfWork';
 import { Injectable } from '@kernel/decorators/Injectable';
 
 @Injectable()

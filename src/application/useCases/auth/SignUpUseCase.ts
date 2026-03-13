@@ -3,8 +3,8 @@ import { Profile } from '@application/entities/Profile';
 import { EmailAlreadyInUse } from '@application/errors/application/EmailAlreadyInUse';
 import { GoalCalculator } from '@application/services/GoalCalculator';
 import { AccountsRepository } from '@infra/databases/dynamodb/AccountsRepository';
+import { SignUpUOW } from '@infra/databases/dynamodb/uow/SignUpUOW';
 import { AuthGateway } from '@infra/gateways/AuthGateway';
-import { SignUpUOW } from '@infra/uow/SignUpUOW';
 import { Injectable } from '@kernel/decorators/Injectable';
 import { generateUniqueId } from '@shared/utils/generateUniqueId';
 
