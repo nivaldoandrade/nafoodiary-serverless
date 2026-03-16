@@ -1,0 +1,78 @@
+
+import { Meal } from '@application/entities/Meal';
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import { s3Client } from '@infra/clients/s3Client';
+import { Injectable } from '@kernel/decorators/Injectable';
+import { AppConfig } from '@shared/config/AppConfig';
+import { randomUUID } from 'node:crypto';
+
+const EXPIRES_PRESIGNED_POST = 5 * 60; //5MIN
+
+@Injectable()
+export class MealFileStorageGateway {
+
+  constructor(private readonly config: AppConfig) { }
+
+  static generateInputFileKey({
+    accountId,
+    inputType,
+  }: MealFileStorageGateway.GenerateInputFileKeyParams): string {
+    const extension = inputType === Meal.InputType.AUDIO ? 'm4a' : 'jpeg';
+    const filename = randomUUID();
+
+    return `${accountId}/${filename}.${extension}`;
+  }
+
+  async getPOST({
+    inputFileKey,
+    inputType,
+    fileSize,
+  }: MealFileStorageGateway.GetPOST['params']): Promise<MealFileStorageGateway.GetPOST['result']> {
+    const contentType = inputType === Meal.InputType.AUDIO
+      ? 'audio/m4a'
+      : 'image/jpeg';
+
+    const { url, fields } = await createPresignedPost(s3Client, {
+      Bucket: this.config.storage.mealsBucketName,
+      Key: inputFileKey,
+      Expires: EXPIRES_PRESIGNED_POST,
+      Conditions: [
+        {
+          'Content-Type': contentType,
+        },
+        ['starts-with', '$x-amz-meta-mealid', ''],
+        ['content-length-range', fileSize, fileSize],
+      ],
+      Fields: {
+        'Content-Type': contentType,
+      },
+    });
+
+    const uploadSignature = Buffer.from(
+      JSON.stringify({ url, fields }),
+    ).toString('base64');
+
+    return {
+      uploadSignature,
+    };
+  }
+}
+
+export namespace MealFileStorageGateway {
+
+  export type GenerateInputFileKeyParams = {
+    accountId: string;
+    inputType: Meal.InputType;
+  }
+
+  export type GetPOST = {
+    params: {
+      inputFileKey: string;
+      inputType: Meal.InputType;
+      fileSize: number;
+    },
+    result: {
+      uploadSignature: string
+    }
+  }
+}

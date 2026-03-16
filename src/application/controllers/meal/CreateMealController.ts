@@ -23,7 +23,10 @@ export class CreateMealController extends Controller<'private'> {
         : Meal.InputType.PICTURE
     );
 
-    const { mealId } = await this.createMealUseCase.execute({
+    const {
+      mealId,
+      uploadSignature,
+    } = await this.createMealUseCase.execute({
       accountId,
       file: {
         inputType,
@@ -35,6 +38,7 @@ export class CreateMealController extends Controller<'private'> {
       statusCode: 201,
       body: {
         mealId,
+        uploadSignature,
       },
     };
   }
@@ -44,5 +48,6 @@ export class CreateMealController extends Controller<'private'> {
 namespace CreateMealController {
   export type Response = {
     mealId: string;
+    uploadSignature: string;
   }
 }
