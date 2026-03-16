@@ -80,11 +80,12 @@ export namespace MealItem {
     id: string;
     accountId: string;
     status: Meal.StatusType;
+    inputFileKey: string;
     inputType: Meal.InputType;
-    attempts: number;
+    attempts?: number;
     name: string;
-    icon: string;
-    foods: Meal.FoodType[];
+    icon?: string;
+    foods?: Meal.FoodType[];
     createdAt: string;
   }
 
