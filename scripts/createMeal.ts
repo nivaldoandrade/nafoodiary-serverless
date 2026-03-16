@@ -1,0 +1,114 @@
+/* eslint-disable no-console */
+import dotenv from 'dotenv';
+import { promises as fs } from 'fs';
+import path from 'path';
+
+dotenv.config({ path: '.env.local' });
+
+const API_URL = `${process.env.API_DOMAIN_NAME}/create-meal`;
+const TOKEN = process.env.BEAREAR_TOKEN;
+
+interface IPresignResponse {
+  mealId: string;
+  uploadSignature: string;
+}
+
+interface ICreateMealResponse {
+  mealId: string;
+  url: string;
+  fields: Record<string, string>;
+}
+
+async function readFile(filePath: string, type: 'audio/m4a' | 'image/jpeg'): Promise<{
+  data: Buffer;
+  size: number;
+  type: string;
+}> {
+  console.log(`🔍 Reading file from disk: ${filePath}`);
+  const data = await fs.readFile(filePath);
+  return {
+    data,
+    size: data.length,
+    type,
+  };
+}
+
+async function createMeal(
+  fileType: string,
+  fileSize: number,
+): Promise<ICreateMealResponse> {
+  console.log(`🚀 Requesting presigned POST for ${fileSize} bytes of type ${fileType}`);
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN}`,
+    },
+    body: JSON.stringify({ contentType: fileType, fileSize }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to get presigned POST: ${res.status} ${res.statusText}`);
+  }
+
+  const json = (await res.json()) as IPresignResponse;
+  const decoded = JSON.parse(
+    Buffer.from(json.uploadSignature, 'base64').toString('utf-8'),
+  ) as ICreateMealResponse;
+
+  console.log('✅ Received presigned POST data');
+  return {
+    ...decoded,
+    mealId: json.mealId,
+  };
+}
+
+function buildFormData(
+  mealId: string,
+  fields: Record<string, string>,
+  fileData: Buffer,
+  filename: string,
+  fileType: string,
+): FormData {
+  console.log(`📦 Building FormData with ${Object.keys(fields).length} fields and file ${filename}`);
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    form.append(key, value);
+  }
+  const blob = new Blob([new Uint8Array(fileData)], { type: fileType });
+  form.append('x-amz-meta-mealId', mealId);
+  form.append('file', blob, filename);
+  return form;
+}
+
+async function uploadToS3(url: string, form: FormData): Promise<void> {
+  console.log(`📤 Uploading to S3 at ${url}`);
+  const res = await fetch(url, {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`S3 upload failed: ${res.status} ${res.statusText} — ${text}`);
+  }
+
+  console.log('🎉 Upload completed successfully');
+}
+
+async function uploadFile(filePath: string, fileType: 'audio/m4a' | 'image/jpeg'): Promise<void> {
+  try {
+    const { data, size, type } = await readFile(filePath, fileType);
+    const { mealId, url, fields } = await createMeal(type, size);
+    const form = buildFormData(mealId, fields, data, path.basename(filePath), type);
+    await uploadToS3(url, form);
+  } catch (err) {
+    console.error('❌ Error during uploadFile:', err);
+    throw err;
+  }
+}
+
+uploadFile(
+  path.resolve(__dirname, 'assets', 'image.jpg'),
+  'image/jpeg',
+).catch(() => process.exit(1));
