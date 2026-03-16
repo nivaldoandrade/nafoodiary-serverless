@@ -7,6 +7,8 @@ export class AppConfig {
 
   readonly db: AppConfig.Db;
 
+  readonly storage: AppConfig.Storage;
+
   constructor() {
     this.envAuth = {
       cognito: {
@@ -20,6 +22,10 @@ export class AppConfig {
       dynamodb: {
         mainTable: env.MAIN_TABLE_NAME,
       },
+    };
+
+    this.storage = {
+      mealsBucketName: env.MEALS_BUCKET_NAME,
     };
   }
 
@@ -38,5 +44,9 @@ namespace AppConfig {
     dynamodb: {
       mainTable: string;
     }
+  }
+
+  export type Storage = {
+    mealsBucketName: string;
   }
 }

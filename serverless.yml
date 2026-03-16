@@ -45,6 +45,7 @@ build:
 resources:
   - ${file(./sls/resources/userPool.yaml)}
   - ${file(./sls/resources/mainTable.yml)}
+  - ${file(./sls/resources/mealsBucket.yml)}
 
 functions:
   - ${file(./sls/functions/hello.yaml)}

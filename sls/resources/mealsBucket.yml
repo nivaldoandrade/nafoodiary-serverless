@@ -1,0 +1,6 @@
+Resources:
+  MealsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: nafoodiary-${self:service}-${sls:stage}-meals-bucket
