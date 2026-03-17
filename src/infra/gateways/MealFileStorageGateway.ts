@@ -24,6 +24,7 @@ export class MealFileStorageGateway {
   }
 
   async getPOST({
+    mealId,
     inputFileKey,
     inputType,
     fileSize,
@@ -45,6 +46,7 @@ export class MealFileStorageGateway {
       ],
       Fields: {
         'Content-Type': contentType,
+        'x-amz-meta-mealid': mealId,
       },
     });
 
@@ -67,6 +69,7 @@ export namespace MealFileStorageGateway {
 
   export type GetPOST = {
     params: {
+      mealId: string;
       inputFileKey: string;
       inputType: Meal.InputType;
       fileSize: number;

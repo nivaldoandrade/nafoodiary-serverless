@@ -64,7 +64,6 @@ async function createMeal(
 }
 
 function buildFormData(
-  mealId: string,
   fields: Record<string, string>,
   fileData: Buffer,
   filename: string,
@@ -76,7 +75,6 @@ function buildFormData(
     form.append(key, value);
   }
   const blob = new Blob([new Uint8Array(fileData)], { type: fileType });
-  form.append('x-amz-meta-mealId', mealId);
   form.append('file', blob, filename);
   return form;
 }
@@ -99,8 +97,8 @@ async function uploadToS3(url: string, form: FormData): Promise<void> {
 async function uploadFile(filePath: string, fileType: 'audio/m4a' | 'image/jpeg'): Promise<void> {
   try {
     const { data, size, type } = await readFile(filePath, fileType);
-    const { mealId, url, fields } = await createMeal(type, size);
-    const form = buildFormData(mealId, fields, data, path.basename(filePath), type);
+    const { url, fields } = await createMeal(type, size);
+    const form = buildFormData(fields, data, path.basename(filePath), type);
     await uploadToS3(url, form);
   } catch (err) {
     console.error('❌ Error during uploadFile:', err);
