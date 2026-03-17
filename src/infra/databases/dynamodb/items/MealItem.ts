@@ -48,9 +48,9 @@ export class MealItem {
   }
 
   static GSI1PK({ accountId, createdAt }: MealItem.GSI1PKParams): MealItem.Keys['GSI1PK'] {
-    const year = createdAt.getFullYear();
-    const month = String(createdAt.getMonth() + 1).padStart(2, '0');
-    const date = String(createdAt.getDate()).padStart(2, '0');
+    const year = createdAt.getUTCFullYear();
+    const month = String(createdAt.getUTCMonth() + 1).padStart(2, '0');
+    const date = String(createdAt.getUTCDate()).padStart(2, '0');
 
     return `MEAL#${accountId}#${year}-${month}-${date}`;
   }
