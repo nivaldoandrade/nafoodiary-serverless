@@ -13,9 +13,9 @@ export class Meal {
 
   name: string;
 
-  attempts?: number;
+  attempts: number;
 
-  icon?: string;
+  icon: string;
 
   foods: Meal.FoodType[];
 
