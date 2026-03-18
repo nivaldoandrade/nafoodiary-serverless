@@ -1,5 +1,5 @@
 import { Meal } from '@application/entities/Meal';
-import { PutCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamodbClient } from '@infra/clients/dynamodbClient';
 import { MealItem } from '@infra/databases/dynamodb/items/MealItem';
 import { Injectable } from '@kernel/decorators/Injectable';
@@ -9,6 +9,28 @@ import { AppConfig } from '@shared/config/AppConfig';
 export class MealRepository {
 
   constructor(private readonly config: AppConfig) { }
+
+  async findById(mealId: string): Promise<Meal | null> {
+    const command = new GetCommand({
+      TableName: this.config.db.dynamodb.mainTable,
+      Key: {
+        PK: MealItem.getPK(mealId),
+        SK: MealItem.getSK(mealId),
+      },
+    });
+
+    const { Item } = await dynamodbClient.send(command);
+
+    if (!Item) {
+      return null;
+    }
+
+    const mealItem = Item as MealItem.ItemType;
+
+    const meal = MealItem.toEntity(mealItem);
+
+    return meal;
+  }
 
   async create(meal: Meal): Promise<void> {
     const mealItem = MealItem.fromEntity(meal);

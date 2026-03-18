@@ -14,3 +14,11 @@ listMeal:
         method: get
         authorizer:
           name: CognitoAuthorizer
+getMealById:
+  handler: src/main/functions/meal/getMealById.handler
+  events:
+    - httpApi:
+        path: /meals/{id}
+        method: get
+        authorizer:
+          name: CognitoAuthorizer
