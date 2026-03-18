@@ -8,8 +8,8 @@ export class GetMealByIdUseCase {
 
   constructor(private readonly mealRepository: MealRepository) { }
 
-  async execute({ mealId }: GetMealByIdUseCase.Input): Promise<GetMealByIdUseCase.Output> {
-    const meal = await this.mealRepository.findById(mealId);
+  async execute({ accountId, mealId }: GetMealByIdUseCase.Input): Promise<GetMealByIdUseCase.Output> {
+    const meal = await this.mealRepository.findById({ accountId, mealId });
 
     if (!meal) {
       throw new ResourceNotFound('Meal not found.');
@@ -21,6 +21,7 @@ export class GetMealByIdUseCase {
 
 namespace GetMealByIdUseCase {
   export type Input = {
+    accountId: string;
     mealId: string;
   }
 

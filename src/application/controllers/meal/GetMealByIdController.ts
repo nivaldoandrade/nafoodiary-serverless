@@ -15,10 +15,12 @@ export class GetMealByIdController extends Controller<'private'> {
   protected async handler(
     request: GetMealByIdController.Request,
   ): Promise<Controller.Response<GetMealByIdController.Response>> {
-    const { id } = request.params;
+    const accountId = request.accountId;
+    const mealId = request.params.id;
 
     const { meal } = await this.getMealByIdUseCase.execute({
-      mealId: id,
+      accountId,
+      mealId,
     });
 
     return {

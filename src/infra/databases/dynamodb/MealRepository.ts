@@ -10,11 +10,11 @@ export class MealRepository {
 
   constructor(private readonly config: AppConfig) { }
 
-  async findById(mealId: string): Promise<Meal | null> {
+  async findById({ accountId, mealId }: MealRepository.FindByIdParams): Promise<Meal | null> {
     const command = new GetCommand({
       TableName: this.config.db.dynamodb.mainTable,
       Key: {
-        PK: MealItem.getPK(mealId),
+        PK: MealItem.getPK({ accountId, mealId }),
         SK: MealItem.getSK(mealId),
       },
     });
@@ -43,4 +43,12 @@ export class MealRepository {
     await dynamodbClient.send(command);
   }
 
+}
+
+namespace MealRepository {
+
+  export type FindByIdParams = {
+    accountId: string;
+    mealId: string;
+  }
 }
