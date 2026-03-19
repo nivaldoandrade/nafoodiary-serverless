@@ -52,5 +52,6 @@ functions:
   - ${file(./sls/functions/auth.yaml)}
   - ${file(./sls/functions/account.yml)}
   - ${file(./sls/functions/meal.yml)}
+  - ${file(./sls/functions/profile.yml)}
 
 
