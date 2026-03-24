@@ -46,6 +46,7 @@ resources:
   - ${file(./sls/resources/userPool.yaml)}
   - ${file(./sls/resources/mainTable.yml)}
   - ${file(./sls/resources/mealsBucket.yml)}
+  - ${file(./sls/resources/mealsBucketCDN.yml)}
 
 functions:
   - ${file(./sls/functions/hello.yaml)}
