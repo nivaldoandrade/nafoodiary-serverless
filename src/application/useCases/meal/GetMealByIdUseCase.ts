@@ -1,12 +1,16 @@
 import { Meal } from '@application/entities/Meal';
 import { ResourceNotFound } from '@application/errors/application/ResourceNotFound';
 import { MealRepository } from '@infra/databases/dynamodb/MealRepository';
+import { MealFileStorageGateway } from '@infra/gateways/MealFileStorageGateway';
 import { Injectable } from '@kernel/decorators/Injectable';
 
 @Injectable()
 export class GetMealByIdUseCase {
 
-  constructor(private readonly mealRepository: MealRepository) { }
+  constructor(
+    private readonly mealRepository: MealRepository,
+    private readonly mealFileStorageGateway: MealFileStorageGateway,
+  ) { }
 
   async execute({ accountId, mealId }: GetMealByIdUseCase.Input): Promise<GetMealByIdUseCase.Output> {
     const meal = await this.mealRepository.findById({ accountId, mealId });
@@ -15,7 +19,20 @@ export class GetMealByIdUseCase {
       throw new ResourceNotFound('Meal not found.');
     }
 
-    return { meal };
+    const inputFileUrl = this.mealFileStorageGateway.getFileURL(meal.inputFileKey);
+
+    return {
+      meal: {
+        id: meal.id,
+        name: meal.name,
+        icon: meal.icon,
+        status: meal.status,
+        foods: meal.foods,
+        inputFileType: meal.inputType,
+        inputFileUrl: inputFileUrl,
+        createdAt: meal.createdAt,
+      },
+    };
   }
 }
 
@@ -26,6 +43,15 @@ namespace GetMealByIdUseCase {
   }
 
   export type Output = {
-    meal: Meal
+    meal: {
+      id: string;
+      status: Meal.StatusType;
+      inputFileType: Meal.InputType;
+      inputFileUrl: string
+      name: string;
+      icon: string;
+      foods: Meal.FoodType[];
+      createdAt: Date;
+    }
   }
 }

@@ -6,6 +6,7 @@ export const envSchema = z.object({
   COGNITO_CLIENT_SECRET: z.string().check(z.trim(), z.minLength(1)),
   MAIN_TABLE_NAME: z.string().check(z.trim(), z.minLength(1)),
   MEALS_BUCKET_NAME: z.string().check(z.trim(), z.minLength(1)),
+  MEALS_CDN_DOMAIN_NAME: z.string().check(z.trim(), z.minLength(1)),
 });
 
 export const env = envSchema.parse(process.env);

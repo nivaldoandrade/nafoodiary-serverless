@@ -31,8 +31,8 @@ export class GetMealByIdController extends Controller<'private'> {
         icon: meal.icon,
         status: meal.status,
         foods: meal.foods,
-        inputFileKey: meal.inputFileKey,
-        inputType: meal.inputType,
+        inputFileType: meal.inputType,
+        inputFileUrl: meal.inputFileUrl,
         createdAt: meal.createdAt,
       },
     };
@@ -49,8 +49,8 @@ export namespace GetMealByIdController {
   export type Response = {
     id: string;
     status: Meal.StatusType;
-    inputFileKey: string;
-    inputType: Meal.InputType;
+    inputFileType: Meal.InputType;
+    inputFileUrl: string;
     name: string;
     icon: string;
     foods: Meal.FoodType[];
