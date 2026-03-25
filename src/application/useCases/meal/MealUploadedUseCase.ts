@@ -1,0 +1,34 @@
+import { Meal } from '@application/entities/Meal';
+import { ResourceNotFound } from '@application/errors/application/ResourceNotFound';
+import { MealRepository } from '@infra/databases/dynamodb/MealRepository';
+import { MealFileStorageGateway } from '@infra/gateways/MealFileStorageGateway';
+import { Injectable } from '@kernel/decorators/Injectable';
+
+@Injectable()
+export class MealUploadedUseCase {
+
+  constructor(
+    private readonly mealFileStorageGateway: MealFileStorageGateway,
+    private readonly mealRepository: MealRepository,
+  ) { }
+
+  async execute({ fileKey }: MealUploadedUseCase.Input): Promise<void> {
+    const { mealId, accountId } = await this.mealFileStorageGateway.getMetadata(fileKey);
+
+    const meal = await this.mealRepository.findById({ mealId, accountId });
+
+    if (!meal) {
+      throw new ResourceNotFound('Meal not found.');
+    }
+
+    meal.status = Meal.StatusType.QUEUED;
+
+    await this.mealRepository.save(meal);
+  }
+}
+
+export namespace MealUploadedUseCase {
+  export type Input = {
+    fileKey: string;
+  }
+}

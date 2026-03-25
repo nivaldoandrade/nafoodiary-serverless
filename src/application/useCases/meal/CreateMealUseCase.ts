@@ -29,6 +29,7 @@ export class CreateMealUseCase {
     });
 
     const { uploadSignature } = await this.mealStorageGateway.getPOST({
+      accountId,
       mealId,
       inputFileKey,
       inputType: file.inputType,

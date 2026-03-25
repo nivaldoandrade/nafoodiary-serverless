@@ -31,7 +31,7 @@ export class GetMealByIdController extends Controller<'private'> {
         icon: meal.icon,
         status: meal.status,
         foods: meal.foods,
-        inputFileType: meal.inputType,
+        inputFileType: meal.inputFileType,
         inputFileUrl: meal.inputFileUrl,
         createdAt: meal.createdAt,
       },

@@ -1,6 +1,7 @@
 import { URL } from 'node:url';
 
 import { Meal } from '@application/entities/Meal';
+import { HeadObjectCommand } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { s3Client } from '@infra/clients/s3Client';
 import { Injectable } from '@kernel/decorators/Injectable';
@@ -33,7 +34,29 @@ export class MealFileStorageGateway {
     return url.toString();
   }
 
+  async getMetadata(fileKey: string): Promise<MealFileStorageGateway.GetMetadada['result']> {
+    const command = new HeadObjectCommand({
+      Bucket: this.config.storage.mealsBucketName,
+      Key: fileKey,
+    });
+
+    const { Metadata = {} } = await s3Client.send(command);
+
+    const metadada = Metadata as MealFileStorageGateway.GetMetadada['HeadObjectCommandResult'];
+
+    if (!metadada.mealid || !metadada.accountid) {
+      throw new Error(`Cannot get metadata file: ${fileKey}.`);
+    }
+
+    return {
+      mealId: metadada.mealid,
+      accountId: metadada.accountid,
+    };
+
+  }
+
   async getPOST({
+    accountId,
     mealId,
     inputFileKey,
     inputType,
@@ -52,11 +75,13 @@ export class MealFileStorageGateway {
           'Content-Type': contentType,
         },
         ['starts-with', '$x-amz-meta-mealid', ''],
+        ['starts-with', '$x-amz-meta-accountid', ''],
         ['content-length-range', fileSize, fileSize],
       ],
       Fields: {
         'Content-Type': contentType,
         'x-amz-meta-mealid': mealId,
+        'x-amz-meta-accountid': accountId,
       },
     });
 
@@ -80,6 +105,7 @@ export namespace MealFileStorageGateway {
   export type GetPOST = {
     params: {
       mealId: string;
+      accountId: string;
       inputFileKey: string;
       inputType: Meal.InputType;
       fileSize: number;
@@ -87,5 +113,18 @@ export namespace MealFileStorageGateway {
     result: {
       uploadSignature: string
     }
+  }
+
+  export type GetMetadada = {
+    HeadObjectCommandResult: {
+      mealid: string;
+      accountid: string;
+    }
+
+    result: {
+      mealId: string;
+      accountId: string;
+    }
+
   }
 }

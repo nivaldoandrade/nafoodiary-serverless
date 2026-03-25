@@ -15,6 +15,7 @@ statements:
   - Effect: Allow
     Action:
       - s3:PutObject
+      - s3:GetObject
     Resource:
       - !GetAtt MealsBucket.Arn
       - !Sub ${MealsBucket.Arn}/*
