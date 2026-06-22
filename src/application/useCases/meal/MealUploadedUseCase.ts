@@ -2,6 +2,7 @@ import { Meal } from '@application/entities/Meal';
 import { ResourceNotFound } from '@application/errors/application/ResourceNotFound';
 import { MealRepository } from '@infra/databases/dynamodb/MealRepository';
 import { MealFileStorageGateway } from '@infra/gateways/MealFileStorageGateway';
+import { MealQueueGateway } from '@infra/gateways/MealQueueGateway';
 import { Injectable } from '@kernel/decorators/Injectable';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class MealUploadedUseCase {
   constructor(
     private readonly mealFileStorageGateway: MealFileStorageGateway,
     private readonly mealRepository: MealRepository,
+    private readonly mealQueueGateway: MealQueueGateway,
   ) { }
 
   async execute({ fileKey }: MealUploadedUseCase.Input): Promise<void> {
@@ -24,6 +26,7 @@ export class MealUploadedUseCase {
     meal.status = Meal.StatusType.QUEUED;
 
     await this.mealRepository.save(meal);
+    await this.mealQueueGateway.publish({ accountId, mealId });
   }
 }
 

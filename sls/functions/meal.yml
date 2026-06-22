@@ -22,6 +22,14 @@ getMealById:
         method: get
         authorizer:
           name: CognitoAuthorizer
+processMeal:
+  handler: src/main/functions/meal/processMeal.handler
+  memorySize: 1024
+  timeout: 120
+  events:
+    - sqs:
+        arn: !GetAtt MealsQueue.Arn
+        batchSize: 2
 newMealUploadedTrigger:
   handler: src/main/functions/meal/newMealUploadedTrigger.handler
   events:
@@ -30,4 +38,3 @@ newMealUploadedTrigger:
         event: s3:ObjectCreated:*
         existing: true
         forceDeploy: true
-

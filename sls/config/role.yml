@@ -19,4 +19,8 @@ statements:
     Resource:
       - !GetAtt MealsBucket.Arn
       - !Sub ${MealsBucket.Arn}/*
+  - Effect: Allow
+    Action:
+      - sqs:SendMessage
+    Resource: !GetAtt MealsQueue.Arn
 

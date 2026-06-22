@@ -47,6 +47,7 @@ resources:
   - ${file(./sls/resources/mainTable.yml)}
   - ${file(./sls/resources/mealsBucket.yml)}
   - ${file(./sls/resources/mealsBucketCDN.yml)}
+  - ${file(./sls/resources/MealsQueue.yml)}
 
 functions:
   - ${file(./sls/functions/hello.yaml)}
