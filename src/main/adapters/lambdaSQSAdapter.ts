@@ -7,11 +7,13 @@ export function lambdaSQSAdapter(eventHandlerImpl: Constructor<ISQSHandler>): SQ
   return async (event) => {
     const eventHandler = Registry.getInstance().resolver(eventHandlerImpl);
 
-    await Promise.all(event.Records.map(e => {
-      const body = JSON.parse(e.body);
+    await Promise.all(
+      event.Records.map(async e => {
+        const body = JSON.parse(e.body);
 
-      eventHandler.handle(body);
-    }));
+        await eventHandler.handle(body);
+      }),
+    );
 
   };
 }
