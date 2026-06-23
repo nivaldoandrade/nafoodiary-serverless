@@ -1,0 +1,8 @@
+Resources:
+  DQLAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ${self:service}-${sls:stage}-DQLAlarmTopic
+      Subscription:
+        - Protocol: email
+          Endpoint: ${env:DLQ_ALARM_EMAIL}

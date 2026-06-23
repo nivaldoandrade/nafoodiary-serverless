@@ -48,6 +48,7 @@ resources:
   - ${file(./sls/resources/mealsBucket.yml)}
   - ${file(./sls/resources/mealsBucketCDN.yml)}
   - ${file(./sls/resources/MealsQueue.yml)}
+  - ${file(./sls/resources/DLQAlarmTopic.yml)}
 
 functions:
   - ${file(./sls/functions/hello.yaml)}
@@ -55,5 +56,3 @@ functions:
   - ${file(./sls/functions/account.yml)}
   - ${file(./sls/functions/meal.yml)}
   - ${file(./sls/functions/profile.yml)}
-
-
