@@ -1,6 +1,8 @@
 import { ValueOf } from '@shared/utils/ValueOf';
 
 export class Meal {
+  public static readonly MAX_ATTEMPS: number = 2;
+
   readonly id: string;
 
   readonly accountId: string;
