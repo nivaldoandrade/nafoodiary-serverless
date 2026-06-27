@@ -72,10 +72,10 @@ export namespace Meal {
   export type FoodType = {
     name: string;
     quantity: string;
-    calories: string;
-    proteins: string;
-    carbohydrates: string;
-    fats: string;
+    calories: number;
+    proteins: number;
+    carbohydrates: number;
+    fats: number;
   };
 
 }

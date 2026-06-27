@@ -1,4 +1,5 @@
 import { Meal } from '@application/entities/Meal';
+import { MealAiGateway } from '@infra/ai/gateways/MealAiGateway';
 import { MealRepository } from '@infra/databases/dynamodb/MealRepository';
 import { Injectable } from '@kernel/decorators/Injectable';
 
@@ -7,6 +8,7 @@ export class ProcessMealUseCase {
 
   constructor(
     private readonly mealRepository: MealRepository,
+    private readonly mealAiGateway: MealAiGateway,
   ) { }
 
   async execute({ accountId, mealId }: ProcessMealUseCase.Input): Promise<void> {
@@ -37,17 +39,16 @@ export class ProcessMealUseCase {
       await this.mealRepository.save(meal);
 
       // PROCESSAR NA AI
+      const {
+        name,
+        icon,
+        foods,
+      } = await this.mealAiGateway.process(meal);
+
       meal.status = Meal.StatusType.SUCCESS;
-      meal.name = 'Almoço';
-      meal.icon = '🍲';
-      meal.foods = [{
-        calories: '100',
-        carbohydrates: '50',
-        fats: '75',
-        name: 'Arroz branco',
-        proteins: '30',
-        quantity: '2 porções',
-      }];
+      meal.name = name;
+      meal.icon = icon;
+      meal.foods = foods;
 
       await this.mealRepository.save(meal);
 

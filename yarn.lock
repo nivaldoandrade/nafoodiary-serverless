@@ -3261,6 +3261,11 @@ obliterator@^1.6.1:
   resolved "https://registry.yarnpkg.com/obliterator/-/obliterator-1.6.1.tgz#dea03e8ab821f6c4d96a299e17aef6a3af994ef3"
   integrity sha512-9WXswnqINnnhOG/5SLimUlzuU1hFJUc8zkwyD59Sd+dPOMf05PmnYG/d6Q7HZ+KmgkZJa1PxRso6QdM3sTNHig==
 
+openai@^6.45.0:
+  version "6.45.0"
+  resolved "https://registry.yarnpkg.com/openai/-/openai-6.45.0.tgz#53840c5c5848884dfbff47006f839b27d1d955b9"
+  integrity sha512-5DQVNErssk0afNpTTHUm/qZPU4iKR9OYdNid8Ib4puq4gHNNvGWZht2zY4h9a8JMF949Ik6m8gQutllVPbjdnw==
+
 optionator@^0.9.3:
   version "0.9.4"
   resolved "https://registry.yarnpkg.com/optionator/-/optionator-0.9.4.tgz#7ea1c1a5d91d764fb282139c88fe11e182a3a734"
@@ -3373,6 +3378,11 @@ ts-api-utils@^2.4.0:
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/ts-api-utils/-/ts-api-utils-2.4.0.tgz#2690579f96d2790253bdcf1ca35d569ad78f9ad8"
   integrity sha512-3TaVTaAv2gTiMB35i3FiGJaRfwb3Pyn/j3m/bfAvGe8FB7CF6u+LMYqYlDh7reQf7UNvoTvdfAqHGmPGOSsPmA==
+
+ts-dedent@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/ts-dedent/-/ts-dedent-2.3.0.tgz#8fac36c7902b541c154ac13a27ac467997af11f8"
+  integrity sha512-JfJeIHke7y2egdGGgRAvpCwYFUsHlM2gPcrVOxFkznt/4uzQ7HFmvE63iFHVLBJNDuyDOQgijDK/tXH/f6Msjg==
 
 tslib@^2.6.2:
   version "2.8.1"
