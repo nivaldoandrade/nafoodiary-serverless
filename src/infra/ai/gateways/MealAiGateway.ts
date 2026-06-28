@@ -33,59 +33,72 @@ export class MealAiGateway {
     private readonly mealFileStorageGateway: MealFileStorageGateway,
   ) { }
 
-  async process(meal: Meal): Promise<MealAiGateway.Process['result']> {
+  async processMeal(meal: Meal): Promise<MealAiGateway.ProcessMeal['result']> {
+
     try {
-      const response = await this.client.responses.create({
-        model: 'gpt-5.4-mini',
-        input: [
-          {
-            role: 'system',
-            content: getImagePrompt(),
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'input_image',
-                image_url: this.mealFileStorageGateway.getFileURL(meal.inputFileKey),
-                detail: 'high',
-              },
-            ],
-          },
-        ],
-        text: {
-          format: zodTextFormat(schema, 'meal'),
-        },
-      });
+      const processedMeal = meal.inputType === Meal.InputType.PICTURE
+        ? await this.processMealByImage(meal)
+        : await this.processMealByAudio(meal);
 
-      const { output_text } = response;
-      const openAiResponseStringify = JSON.stringify(response, null, 2);
-
-      if (!output_text) {
-        console.error(`OPEN AI response: ${openAiResponseStringify}`);
-        throw new Error(`OPEN AI error in meal: ${meal.id}`);
-      }
-
-      const {
-        success,
-        data,
-        error,
-      } = schema.safeParse(JSON.parse(output_text));
-
-      if (!success) {
-        console.log(`Zod error: ${JSON.stringify(error.issues, null, 2)}`);
-        console.error(`OPEN AI response: ${openAiResponseStringify}`);
-        throw new Error(`OPEN AI error in meal: ${meal.id}`);
-      }
-
-      return data;
+      return processedMeal;
     } catch (error) {
-      new Error(`OPEN AI ERROR: ${error}`);
-      throw error;
+      throw new Error(`[OPEN AI] ${error}`, { cause: error });
     }
+
   }
 
-  async transcribe(meal: Meal): Promise<MealAiGateway.Process['result']> {
+  private async processMealByImage(meal: Meal): Promise<MealAiGateway.ProcessMeal['result']> {
+    const input: OpenAI.Responses.ResponseInput = [
+      {
+        role: 'system',
+        content: getImagePrompt(),
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'input_image',
+            image_url: this.mealFileStorageGateway.getFileURL(meal.inputFileKey),
+            detail: 'high',
+          },
+          {
+            type: 'input_text',
+            text: `Meal Date: ${meal.createdAt.toISOString()}`,
+          },
+        ],
+      },
+    ];
+
+    const processedMeal = await this.callOpenAI(meal, input);
+
+    return processedMeal;
+  }
+
+  private async processMealByAudio(meal: Meal): Promise<MealAiGateway.ProcessMeal['result']> {
+    const audioTranscript = await this.transcribe(meal);
+
+    const input: OpenAI.Responses.ResponseInput = [
+      {
+        role: 'system',
+        content: getTextPrompt(),
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: `Meal date: ${meal.createdAt.toISOString()}\n\n Meal: ${audioTranscript}`,
+          },
+        ],
+      },
+    ];
+
+    const processedMeal = await this.callOpenAI(meal, input);
+
+    return processedMeal;
+  }
+
+  private async transcribe(meal: Meal): Promise<string> {
     const audioUrl = this.mealFileStorageGateway.getFileURL(meal.inputFileKey);
     const audioBuffer = await downloadByURL(audioUrl);
 
@@ -100,28 +113,19 @@ export class MealAiGateway {
 
     const { text } = transcription;
 
-    if (!text) {
+    if (!text.trim()) {
       console.error(`OPEN AI transcription response: ${JSON.stringify(transcription, null, 2)}`);
       throw new Error(`OPEN AI error in meal: ${meal.id}`);
     }
 
+    return text;
+
+  }
+
+  private async callOpenAI(meal: Meal, input: OpenAI.Responses.ResponseInput) {
     const response = await this.client.responses.create({
       model: 'gpt-5.4-mini',
-      input: [
-        {
-          role: 'system',
-          content: getTextPrompt(),
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'input_text',
-              text: `Meal date: ${meal.createdAt}\n\n Meal: ${text}`,
-            },
-          ],
-        },
-      ],
+      input,
       text: {
         format: zodTextFormat(schema, 'meal'),
       },
@@ -135,11 +139,22 @@ export class MealAiGateway {
       throw new Error(`OPEN AI error in meal: ${meal.id}`);
     }
 
+    let parsedOutput: unknown;
+
+    try {
+      parsedOutput = JSON.parse(output_text);
+    } catch (error) {
+      throw new Error(
+        `OPEN AI invalid JSON response in meal: ${meal.id}`,
+        { cause: error },
+      );
+    }
+
     const {
       success,
       data,
       error,
-    } = schema.safeParse(JSON.parse(output_text));
+    } = schema.safeParse(parsedOutput);
 
     if (!success) {
       console.log(`Zod error: ${JSON.stringify(error.issues, null, 2)}`);
@@ -149,10 +164,11 @@ export class MealAiGateway {
 
     return data;
   }
+
 }
 
 export namespace MealAiGateway {
-  export type Process = {
+  export type ProcessMeal = {
     result: z.infer<typeof schema>;
   }
 }

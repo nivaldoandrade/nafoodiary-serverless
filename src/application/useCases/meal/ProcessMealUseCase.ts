@@ -42,14 +42,7 @@ export class ProcessMealUseCase {
         name,
         icon,
         foods,
-      } = await this.mealAiGateway.transcribe(meal);
-
-      // PROCESSAR NA AI
-      // const {
-      //   name,
-      //   icon,
-      //   foods,
-      // } = await this.mealAiGateway.process(meal);
+      } = await this.mealAiGateway.processMeal(meal);
 
       meal.status = Meal.StatusType.SUCCESS;
       meal.name = name;
