@@ -1,3 +1,4 @@
+import { Profile } from '@application/entities/Profile';
 import { ResourceNotFound } from '@application/errors/application/ResourceNotFound';
 import { QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamodbClient } from '@infra/clients/dynamodbClient';
@@ -21,7 +22,7 @@ export class GetProfileAndGoalByAccountId {
       TableName: this.config.db.dynamodb.mainTable,
       Limit: 2,
       Select: 'SPECIFIC_ATTRIBUTES',
-      ProjectionExpression: '#name, #birthDate, #gender, #height, #weight, #calories, #proteins, #carbohydrates, #fats, #type',
+      ProjectionExpression: '#name, #birthDate, #gender, #height, #weight, #goal, #calories, #proteins, #carbohydrates, #fats, #type',
       KeyConditionExpression: '#PK = :PK AND begins_with(#SK, :SK)',
       ExpressionAttributeNames: {
         '#PK': 'PK',
@@ -31,6 +32,7 @@ export class GetProfileAndGoalByAccountId {
         '#gender': 'gender',
         '#height': 'height',
         '#weight': 'weight',
+        '#goal': 'goal',
         '#calories': 'calories',
         '#proteins': 'proteins',
         '#carbohydrates': 'carbohydrates',
@@ -86,6 +88,7 @@ export namespace GetProfileAndGoalByAccountId {
       gender: string;
       height: number;
       weight: number;
+      goal: Profile.Goal;
     },
     goal: {
       calories: number;
