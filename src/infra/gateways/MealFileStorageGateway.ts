@@ -17,9 +17,9 @@ export class MealFileStorageGateway {
 
   static generateInputFileKey({
     accountId,
-    inputType,
+    mimeType,
   }: MealFileStorageGateway.GenerateInputFileKeyParams): string {
-    const extension = inputType === Meal.InputType.AUDIO ? 'm4a' : 'jpeg';
+    const { extension } = Meal.getInputFile(mimeType);
     const filename = randomUUID();
 
     return `${accountId}/${filename}.${extension}`;
@@ -59,27 +59,23 @@ export class MealFileStorageGateway {
     accountId,
     mealId,
     inputFileKey,
-    inputType,
+    mimeType,
     fileSize,
   }: MealFileStorageGateway.GetPOST['params']): Promise<MealFileStorageGateway.GetPOST['result']> {
-    const contentType = inputType === Meal.InputType.AUDIO
-      ? 'audio/m4a'
-      : 'image/jpeg';
-
     const { url, fields } = await createPresignedPost(s3Client, {
       Bucket: this.config.storage.mealsBucketName,
       Key: inputFileKey,
       Expires: EXPIRES_PRESIGNED_POST,
       Conditions: [
         {
-          'Content-Type': contentType,
+          'Content-Type': mimeType,
         },
         ['starts-with', '$x-amz-meta-mealid', ''],
         ['starts-with', '$x-amz-meta-accountid', ''],
         ['content-length-range', fileSize, fileSize],
       ],
       Fields: {
-        'Content-Type': contentType,
+        'Content-Type': mimeType,
         'x-amz-meta-mealid': mealId,
         'x-amz-meta-accountid': accountId,
       },
@@ -99,7 +95,7 @@ export namespace MealFileStorageGateway {
 
   export type GenerateInputFileKeyParams = {
     accountId: string;
-    inputType: Meal.InputType;
+    mimeType: Meal.MimeType;
   }
 
   export type GetPOST = {
@@ -107,7 +103,7 @@ export namespace MealFileStorageGateway {
       mealId: string;
       accountId: string;
       inputFileKey: string;
-      inputType: Meal.InputType;
+      mimeType: Meal.MimeType;
       fileSize: number;
     },
     result: {

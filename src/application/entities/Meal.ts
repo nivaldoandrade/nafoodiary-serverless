@@ -69,6 +69,45 @@ export namespace Meal {
 
   export type InputType = ValueOf<typeof InputType>;
 
+  export const InputFile = {
+    'audio/m4a': {
+      extension: 'm4a',
+      inputType: InputType.AUDIO,
+    },
+    'audio/webm': {
+      extension: 'webm',
+      inputType: InputType.AUDIO,
+    },
+    'image/jpeg': {
+      extension: 'jpeg',
+      inputType: InputType.PICTURE,
+    },
+  } as const;
+
+  export type MimeType = keyof typeof InputFile;
+
+  export const mimeTypes = Object.keys(InputFile) as [MimeType, ...MimeType[]];
+
+  export function getInputFile(mimeType: MimeType) {
+    return InputFile[mimeType];
+  }
+
+  export function getInputFileByKey(inputFileKey: string) {
+    const extension = inputFileKey.split('.').pop()?.toLowerCase();
+    const mimeType = mimeTypes.find(
+      (type) => InputFile[type].extension === extension,
+    );
+
+    if (!mimeType) {
+      throw new Error(`Unsupported input file extension: ${extension ?? 'none'}.`);
+    }
+
+    return {
+      mimeType,
+      ...InputFile[mimeType],
+    };
+  }
+
   export type FoodType = {
     name: string;
     quantity: string;

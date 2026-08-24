@@ -101,13 +101,14 @@ export class MealAiGateway {
   private async transcribe(meal: Meal): Promise<string> {
     const audioUrl = this.mealFileStorageGateway.getFileURL(meal.inputFileKey);
     const audioBuffer = await downloadByURL(audioUrl);
+    const inputFile = Meal.getInputFileByKey(meal.inputFileKey);
 
     const transcription = await this.client.audio.transcriptions.create({
       model: 'gpt-4o-mini-transcribe',
       file: await toFile(
         audioBuffer,
-        'audio.m4a',
-        { type: 'audio/m4a' },
+        `audio.${inputFile.extension}`,
+        { type: inputFile.mimeType },
       ),
     });
 

@@ -17,7 +17,7 @@ export class CreateMealUseCase {
 
     const inputFileKey = MealFileStorageGateway.generateInputFileKey({
       accountId,
-      inputType: file.inputType,
+      mimeType: file.mimeType,
     });
 
     const meal = new Meal({
@@ -32,7 +32,7 @@ export class CreateMealUseCase {
       accountId,
       mealId,
       inputFileKey,
-      inputType: file.inputType,
+      mimeType: file.mimeType,
       fileSize: file.size,
     });
 
@@ -50,6 +50,7 @@ export namespace CreateMealUseCase {
     accountId: string;
     file: {
       inputType: Meal.InputType;
+      mimeType: Meal.MimeType;
       size: number;
     }
   }

@@ -17,11 +17,7 @@ export class CreateMealController extends Controller<'private'> {
     const accountId = request.accountId;
     const { contentType, fileSize } = request.body;
 
-    const inputType = (
-      contentType === 'audio/m4a'
-        ? Meal.InputType.AUDIO
-        : Meal.InputType.PICTURE
-    );
+    const inputFile = Meal.getInputFile(contentType);
 
     const {
       mealId,
@@ -29,7 +25,8 @@ export class CreateMealController extends Controller<'private'> {
     } = await this.createMealUseCase.execute({
       accountId,
       file: {
-        inputType,
+        mimeType: contentType,
+        inputType: inputFile.inputType,
         size: fileSize,
       },
     });
