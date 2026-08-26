@@ -47,7 +47,10 @@ export class ProcessMealUseCase {
       meal.status = Meal.StatusType.SUCCESS;
       meal.name = name;
       meal.icon = icon;
-      meal.foods = foods;
+      meal.foods = foods.map(food => ({
+        ...food,
+        calories: Math.round((food.carbohydrates * 4) + (food.proteins * 4) + (food.fats * 9)),
+      }));
 
       await this.mealRepository.save(meal);
 

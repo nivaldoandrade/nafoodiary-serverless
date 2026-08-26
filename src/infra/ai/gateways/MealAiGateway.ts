@@ -17,7 +17,6 @@ const schema = z.object({
     z.object({
       name: z.string(),
       quantity: z.string(),
-      calories: z.number(),
       carbohydrates: z.number(),
       fats: z.number(),
       proteins: z.number(),
