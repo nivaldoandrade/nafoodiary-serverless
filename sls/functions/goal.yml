@@ -1,0 +1,8 @@
+updateGoal:
+  handler: src/main/functions/goal/updateGoal.handler
+  events:
+    - httpApi:
+        path: /goals
+        method: post
+        authorizer:
+          name: CognitoAuthorizer

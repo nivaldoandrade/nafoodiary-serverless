@@ -17,6 +17,7 @@ provider:
   iam:
     role: ${file(./sls/config/role.yml)}
   httpApi:
+    cors: true
     disableDefaultEndpoint: ${env:APIGATEWAY_DEFAULT_ENDPOINT_DISABLE, false}
     authorizers:
       CognitoAuthorizer:
@@ -56,3 +57,4 @@ functions:
   - ${file(./sls/functions/account.yml)}
   - ${file(./sls/functions/meal.yml)}
   - ${file(./sls/functions/profile.yml)}
+  - ${file(./sls/functions/goal.yml)}
