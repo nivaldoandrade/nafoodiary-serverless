@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 
-import { AdminDeleteUserCommand, ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, InitiateAuthCommand, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { AdminDeleteUserAttributesCommand, AdminDeleteUserCommand, AdminUpdateUserAttributesCommand, ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, GetUserCommand, InitiateAuthCommand, NotAuthorizedException, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { InvalidOAuthGrant } from '@application/errors/application/InvalidOAuthGrant';
 import { cognitoClient } from '@infra/clients/cognitoClient';
 import { Injectable } from '@kernel/decorators/Injectable';
 import { AppConfig } from '@shared/config/AppConfig';
@@ -11,6 +12,100 @@ export class AuthGateway {
   constructor(
     private readonly config: AppConfig,
   ) { }
+
+  async exchangeCodeForTokens({
+    code,
+    redirect_uri,
+    code_verifier,
+  }: AuthGateway.ExchangeCodeForTokens['params'],
+  ): Promise<AuthGateway.ExchangeCodeForTokens['result']> {
+    const authorizationToken = Buffer.from(
+      `${this.config.envAuth.cognito.clientId}:${this.config.envAuth.cognito.clientSecret}`,
+    ).toString('base64');
+
+    const body = new URLSearchParams({
+      grant_type: 'authorization_code',
+      redirect_uri,
+      code,
+      code_verifier,
+    });
+
+    const response = await fetch(`${this.config.envAuth.cognito.userPooldomain}/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${authorizationToken}`,
+      },
+      body: body.toString(),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      throw new InvalidOAuthGrant('Error while exchanging code.');
+    }
+
+    const { access_token, refresh_token } = await response.json() as AuthGateway.ExchangeCodeForTokens['fetchResponse'];
+
+    if (!access_token || !refresh_token) {
+      throw new InvalidOAuthGrant('Cognito token response is missing tokens.');
+    }
+
+    return {
+      accessToken: access_token,
+      refreshToken: refresh_token,
+    };
+  }
+
+  async getUser(accessToken: string) {
+    const command = new GetUserCommand({
+      AccessToken: accessToken,
+    });
+
+    let userAttributes: AuthGateway.UserAttributes;
+
+    try {
+      const { UserAttributes } = await cognitoClient.send(command);
+      userAttributes = UserAttributes;
+    } catch (error) {
+      if (error instanceof NotAuthorizedException) {
+        throw new InvalidOAuthGrant('Invalid or expired access token.');
+      }
+
+      throw error;
+    }
+
+    const attrs = Object.fromEntries(
+      userAttributes?.map(({ Name, Value }) => [Name, Value ?? null]) ?? [],
+    ) as Record<string, string | null>;
+
+    return {
+      name: attrs['name'] ?? null,
+      email: attrs['email'] ?? null,
+      externalId: attrs['sub'] ?? null,
+    };
+  }
+
+  async saveInternalId({ externalId, internalId }: AuthGateway.SaveInternalIdParams) {
+    const command = new AdminUpdateUserAttributesCommand({
+      UserPoolId: this.config.envAuth.cognito.userPoolId,
+      Username: externalId,
+      UserAttributes: [
+        { Name: 'custom:internalSocialId', Value: internalId },
+      ],
+    });
+
+    await cognitoClient.send(command);
+  }
+
+  async deleteInternalId(externalId: string) {
+    const command = new AdminDeleteUserAttributesCommand({
+      UserPoolId: this.config.envAuth.cognito.userPoolId,
+      Username: externalId,
+      UserAttributeNames: ['custom:internalSocialId'],
+    });
+
+    await cognitoClient.send(command);
+  }
 
   async signIn({ email, password }: AuthGateway.SignIn['params']): Promise<AuthGateway.SignIn['result']> {
     const command = new InitiateAuthCommand({
@@ -133,6 +228,29 @@ export class AuthGateway {
 }
 
 namespace AuthGateway {
+  export type ExchangeCodeForTokens = {
+    params: {
+      code: string;
+      redirect_uri: string;
+      code_verifier: string;
+    },
+    fetchResponse: {
+      access_token?: string;
+      refresh_token?: string;
+    },
+    result: {
+      accessToken: string;
+      refreshToken: string;
+    }
+  }
+
+  export type SaveInternalIdParams = {
+    externalId: string;
+    internalId: string;
+  }
+
+  export type UserAttributes = { Name?: string; Value?: string }[] | undefined;
+
   export type SignUp = {
     params: {
       internalId: string;

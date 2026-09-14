@@ -8,6 +8,7 @@ export const envSchema = z.object({
   MEALS_BUCKET_NAME: z.string().check(z.trim(), z.minLength(1)),
   MEALS_CDN_DOMAIN_NAME: z.string().check(z.trim(), z.minLength(1)),
   MEALS_QUEUE_URL: z.string().check(z.trim(), z.minLength(1)),
+  COGNITO_POOL_DOMAIN: z.string().check(z.trim(), z.minLength(1)),
 });
 
 export const env = envSchema.parse(process.env);

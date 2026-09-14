@@ -5,6 +5,7 @@ API serverless para um diário alimentar inteligente com inteligência artificia
 ## Funcionalidades
 
 - **Autenticação completa**: Cadastro, login, refresh token e recuperação de senha via AWS Cognito;
+- **Login com Google (OAuth 2.0 + PKCE)**: Autenticação via Google Identity Provider do Cognito com callback e onboarding automático do novo usuário;
 - **Perfil do usuário**: Cadastro de dados pessoais (nome, data de nascimento, gênero, altura, peso, nível de atividade e objetivo);
 - **Metas nutricionais**: Cálculo automático de calorias e macronutrientes diários com base no perfil (TDEE/BMR);
 - **Upload de refeições**: Upload de fotos (JPEG) ou áudios (M4A, WebM) via Presigned POST do S3;
@@ -78,6 +79,46 @@ A aplicação segue uma arquitetura **serverless event-driven** com separação 
 10. IA retorna dados estruturados dos alimentos (nome, quantidade, proteínas, carboidratos, gorduras);
 11. Backend calcula calorias e atualiza o DynamoDB com status `SUCCESS`;
 12. Em caso de falha, o SQS faz retry automático (até 2 vezes). Após esgotar, vai para a Dead Letter Queue e dispara alarme por email.
+
+## Fluxo de Autenticação OAuth (Google)
+
+O login com Google usa o fluxo **Authorization Code + PKCE**:
+
+```text
+Frontend                          Cognito                       API (Lambda)
+   |  1. Gera code_verifier        |                              |
+   |  2. Redireciona para login    |                              |
+   |------------------------------▶|  /oauth2/authorize            |
+   |                               |  3. Usuário autentica no      |
+   |                               |     Google e é redirecionado  |
+   |◀--------- 4. code ------------|                              |
+   |  5. POST /auth/oauth/callback |                              |
+   |----------------------------------------------------------▶|
+   |                               |  6. Troca code + verifier por |
+   |                               |     tokens (PKCE)            |
+   |◀------------ 7. tokens + isOnboarded --------------------|
+   |  8. Se isOnboarded = false                                   |
+   |     POST /auth/complete-onboarding                           |
+   |----------------------------------------------------------▶|
+   |                               |  9. Cria Account/Profile/Goal |
+   |                               |     (TransactWrite) + vincula |
+   |                               |     externalId -> accountId   |
+   |◀--------------------- 10. 204 ----------------------------|
+   |  11. POST /auth/refresh-token (obter token com internalId)   |
+   |◀------------------ 12. novos access/refresh -------------|
+```
+
+1. O frontend gera um `code_verifier` aleatório e redireciona o usuário para o Cognito (`/oauth2/authorize`) com o `code_challenge` (PKCE);
+2. O usuário autentica com a conta Google e o Cognito redireciona de volta com um `code`;
+3. O frontend envia `code`, `redirectUri` e `codeVerifier` para `POST /auth/oauth/callback`;
+4. O backend troca o `code` pelos tokens (valida `access_token` e `refresh_token`) e verifica se já existe conta para o email — retorna `200` com `{ accessToken, refreshToken, isOnboarded }`;
+5. **Usuário novo** (`isOnboarded: false`): o frontend chama `POST /auth/complete-onboarding` com o `accessToken`. O backend deriva identidade do token, cria `Account`, `Profile` e `Goal` atomicamente (`TransactWriteCommand`) e vincula `custom:internalSocialId` → `accountId` no Cognito. Responde `204`;
+6. Após o onboarding, o frontend chama `POST /auth/refresh-token` — os novos tokens já contêm o claim `internalId` (injetado pelo trigger `preTokenGeneration`), usado como `accountId` nas rotas protegidas.
+
+**Observações:**
+- O `complete-onboarding` é **idempotente** (conta existente com mesmo `externalId` retorna `204`);
+- Se a troca de código falhar, o backend retorna `400 INVALID_GRANT`; se o email pertencer a outra conta, `409 EMAIL_ALREADY_IN_USE`;
+- A troca de código tem timeout de 5 segundos.
 
 ## Pré-requisitos
 
@@ -201,6 +242,8 @@ endpoints:
   POST - https://xxx.execute-api.sa-east-1.amazonaws.com/auth/refresh-token
   POST - https://xxx.execute-api.sa-east-1.amazonaws.com/auth/forgot-password
   POST - https://xxx.execute-api.sa-east-1.amazonaws.com/auth/confirmation-forgot-password
+  POST - https://xxx.execute-api.sa-east-1.amazonaws.com/auth/oauth/callback
+  POST - https://xxx.execute-api.sa-east-1.amazonaws.com/auth/complete-onboarding
   GET  - https://xxx.execute-api.sa-east-1.amazonaws.com/me
   PUT  - https://xxx.execute-api.sa-east-1.amazonaws.com/profiles
   POST - https://xxx.execute-api.sa-east-1.amazonaws.com/create-meal
@@ -213,6 +256,8 @@ functions:
   refreshToken: api-dev-refreshToken
   forgotPassword: api-dev-forgotPassword
   confirmationForgotPassword: api-dev-confirmationForgotPassword
+  oauthCallback: api-dev-oauthCallback
+  completeOnboarding: api-dev-completeOnboarding
   preSignUpTrigger: api-dev-preSignUpTrigger
   preTokenGenerationTrigger: api-dev-preTokenGenerationTrigger
   customMessageTrigger: api-dev-customMessageTrigger
@@ -238,6 +283,8 @@ O endpoint base da API será: `https://xxx.execute-api.sa-east-1.amazonaws.com`
 | POST   | `/auth/refresh-token`                | Renova tokens de acesso                  | Pública      |
 | POST   | `/auth/forgot-password`              | Solicita código de recuperação de senha  | Pública      |
 | POST   | `/auth/confirmation-forgot-password` | Confirma redefinição de senha com código | Pública      |
+| POST   | `/auth/oauth/callback`               | Troca o code do Google por tokens (PKCE) | Pública      |
+| POST   | `/auth/complete-onboarding`          | Cria conta, perfil e metas de usuário do Google | Pública  |
 
 ### Perfil e Conta
 
@@ -320,6 +367,55 @@ O endpoint base da API será: `https://xxx.execute-api.sa-east-1.amazonaws.com`
     "refreshToken": "eyJhdWQiOiJYLmNv..."
   }
   ```
+
+#### OAuth Callback -> `/auth/oauth/callback`
+
+- Troca o `code` de autorização do Google por tokens (fluxo OAuth 2.0 Authorization Code + PKCE). O `codeVerifier` é o mesmo gerado no início do fluxo pelo frontend:
+
+  ```bash
+  curl -X POST https://xxx.execute-api.sa-east-1.amazonaws.com/auth/oauth/callback \
+    -H "Content-Type: application/json" \
+    -d '{
+      "code": "4/0AfJohXnZ0x9y...",
+      "redirectUri": "https://app.nafoodiary.com/oauth/callback",
+      "codeVerifier": "aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvV"
+    }'
+  ```
+
+- Resposta esperada (`200`):
+  ```json
+  {
+    "accessToken": "eyJhbGciOiJSUzI1NiIs...",
+    "refreshToken": "eyJhdWQiOiJYLmNv...",
+    "isOnboarded": false
+  }
+  ```
+
+- `isOnboarded: false` indica um usuário novo (sem conta no DynamoDB). Nesse caso, o frontend deve chamar `/auth/complete-onboarding` com o `accessToken` retornado. Após o onboarding, chamar `/auth/refresh-token` para obter tokens com o claim `internalId` (usado como `accountId` nas rotas autenticadas).
+- Erros: `400 INVALID_GRANT` (code inválido ou expirado, ou resposta do Cognito sem tokens) e `400 VALIDATION` (body inválido). Timeout de 5s na troca de código com o Cognito.
+
+#### Complete Onboarding -> `/auth/complete-onboarding`
+
+- Cria a conta, o perfil e as metas nutricionais de um usuário do Google. Identidade (nome, email, `externalId`) é derivada **do access token**, não do body:
+
+  ```bash
+  curl -X POST https://xxx.execute-api.sa-east-1.amazonaws.com/auth/complete-onboarding \
+    -H "Content-Type: application/json" \
+    -d '{
+      "accessToken": "eyJhbGciOiJSUzI1NiIs...",
+      "birthDate": "1990-05-15",
+      "gender": "MALE",
+      "height": 175,
+      "weight": 80,
+      "activityLevel": "MODERATE",
+      "goal": "LOSE"
+    }'
+  ```
+
+- Resposta esperada: `204 No Content`.
+- **Idempotente**: se a conta já existe para o mesmo `externalId` do token, retorna `204` (retry seguro após sucesso). 
+- Erros: `409 EMAIL_ALREADY_IN_USE` (email já pertence a outra conta), `400 INVALID_GRANT` (token inválido/expirado ou dados ausentes no Cognito) e `400 VALIDATION` (body inválido).
+- Após o sucesso, o frontend deve chamar `/auth/refresh-token` para obter tokens contendo o claim `internalId`.
 
 #### Get Me -> `/me`
 
@@ -462,7 +558,7 @@ O endpoint base da API será: `https://xxx.execute-api.sa-east-1.amazonaws.com`
 | Trigger            | Função                      | Descrição                                                                |
 | ------------------ | --------------------------- | ------------------------------------------------------------------------ |
 | PreSignUp          | `preSignUpTrigger`          | Auto-confirma e auto-verifica novos usuários (sem confirmação por email) |
-| PreTokenGeneration | `preTokenGenerationTrigger` | Injeta o claim `internalId` no access token para uso como `accountId`    |
+| PreTokenGeneration | `preTokenGenerationTrigger` | Injeta o claim `internalId` no access token a partir de `custom:internalSocialId` (Google) ou `custom:internalId` (sign-up) |
 | CustomMessage      | `customMessageTrigger`      | Personaliza o email de recuperação de senha em português                 |
 
 ### Eventos S3
@@ -510,6 +606,7 @@ O endpoint base da API será: `https://xxx.execute-api.sa-east-1.amazonaws.com`
   - Access token: 1 dia
   - Refresh token: 7 dias (com rotação)
 - **UserPoolClient**: `api-{stage}-UserPoolClient`
+- **Google Identity Provider**: Login com Google (Authorization Code + PKCE), scopes `profile email openid`, mapeamento de `name` e `email`, callback para o domínio do frontend
 
 ### S3
 
@@ -532,7 +629,8 @@ O endpoint base da API será: `https://xxx.execute-api.sa-east-1.amazonaws.com`
 ### API Gateway
 
 - HTTP API v2 com CORS habilitado
-- JWT Authorizer configurado com o Cognito UserPool
+- JWT Authorizer configurado com o Cognito UserPool para rotas protegidas
+- Rotas de OAuth (`/auth/oauth/callback` e `/auth/complete-onboarding`) são públicas e validam o `accessToken` no body
 - Suporte a domínio personalizado (opcional)
 
 ## Variáveis de Ambiente

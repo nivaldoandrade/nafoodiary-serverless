@@ -11,6 +11,7 @@ statements:
   - Effect: Allow
     Action:
       - cognito-idp:AdminDeleteUser
+      - cognito-idp:AdminUpdateUserAttributes
     Resource: !GetAtt UserPool.Arn
   - Effect: Allow
     Action:

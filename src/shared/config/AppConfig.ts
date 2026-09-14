@@ -19,6 +19,7 @@ export class AppConfig {
         clientId: env.COGNITO_CLIENT_ID,
         userPoolId: env.COGNITO_USER_POOL_ID,
         clientSecret: env.COGNITO_CLIENT_SECRET,
+        userPooldomain: env.COGNITO_POOL_DOMAIN,
       },
     };
 
@@ -49,6 +50,7 @@ namespace AppConfig {
       clientId: string;
       userPoolId: string;
       clientSecret: string;
+      userPooldomain: string;
     }
   }
 

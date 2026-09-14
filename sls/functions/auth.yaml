@@ -33,6 +33,20 @@ confirmationForgotPassword:
         path: /auth/confirmation-forgot-password
         method: POST
 
+oauthCallback:
+  handler: src/main/functions/auth/oauthCallback.handler
+  events:
+    - httpApi:
+        path: /auth/oauth/callback
+        method: POST
+
+completeOnboarding:
+  handler: src/main/functions/auth/completeOnboarding.handler
+  events:
+    - httpApi:
+        path: /auth/complete-onboarding
+        method: POST
+
 preSignUpTrigger:
   handler: src/main/functions/auth/preSignUpTrigger.handler
   events:

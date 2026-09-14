@@ -23,7 +23,7 @@ export class RefreshTokenController extends Controller<'public'> {
     } = await this.refreshTokenUseCase.execute(refreshToken);
 
     return {
-      statusCode: 201,
+      statusCode: 200,
       body: {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,

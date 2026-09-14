@@ -32,6 +32,10 @@ Resources:
             Mutable: false
             AttributeDataType: String
             Required: false
+          - Name: internalSocialId
+            Mutable: true
+            AttributeDataType: String
+            Required: false
         LambdaConfig:
           PreTokenGenerationConfig:
             LambdaArn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-preTokenGenerationTrigger'
@@ -61,3 +65,37 @@ Resources:
         RefreshTokenRotation:
           Feature: ENABLED
           RetryGracePeriodSeconds: 0
+        AllowedOAuthFlowsUserPoolClient: true
+        AllowedOAuthScopes:
+          - email
+          - profile
+          - openid
+          - aws.cognito.signin.user.admin
+        AllowedOAuthFlows:
+          - code
+        CallbackURLs:
+          - http://localhost:8081
+          - https://192.168.100.21:8443
+          - exp://192.168.100.21:8081
+        SupportedIdentityProviders:
+          - COGNITO
+          - Google
+    UserPoolDomain:
+      Type: AWS::Cognito::UserPoolDomain
+      Properties:
+        UserPoolId: !Ref UserPool
+        Domain: nafoodiary
+    GoogleIdentityProvider:
+      Type: AWS::Cognito::UserPoolIdentityProvider
+      Properties:
+        UserPoolId: !Ref UserPool
+        ProviderName: Google
+        ProviderType: Google
+        ProviderDetails:
+          client_id: ${env:GOOGLE_CLIENT_ID}
+          client_secret: ${env:GOOGLE_CLIENT_SECRET}
+          authorize_scopes: "profile email openid"
+        AttributeMapping:
+          email: email
+          email_verified: email_verified
+          name: name

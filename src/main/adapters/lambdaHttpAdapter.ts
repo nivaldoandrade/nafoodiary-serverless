@@ -19,8 +19,16 @@ export function lambdaHttpAdapter(controllerImpl: Constructor<Controller<'privat
       const queryParams = event.queryStringParameters ?? {};
 
       const accountId = 'authorizer' in event.requestContext
-        ? event.requestContext.authorizer.jwt.claims['internalId'] as string
+        ? event.requestContext.authorizer.jwt.claims['internalId'] as string | undefined
         : undefined;
+
+      if ('authorizer' in event.requestContext && !accountId) {
+        return lambdaHttpErrorResponse({
+          statusCode: 401,
+          code: 'UNAUTHORIZED',
+          message: 'Missing accountId claim.',
+        });
+      }
 
       const controller = Registry.getInstance().resolver(controllerImpl);
 
@@ -58,8 +66,6 @@ export function lambdaHttpAdapter(controllerImpl: Constructor<Controller<'privat
           message: error.message,
         });
       }
-
-      console.log(error);
 
       return lambdaHttpErrorResponse({
         statusCode: 500,
