@@ -20,13 +20,14 @@ export class GetProfileAndGoalByAccountId {
 
     const command = new QueryCommand({
       TableName: this.config.db.dynamodb.mainTable,
-      Limit: 2,
+      Limit: 3,
       Select: 'SPECIFIC_ATTRIBUTES',
-      ProjectionExpression: '#name, #birthDate, #gender, #height, #weight, #goal, #calories, #proteins, #carbohydrates, #fats, #type',
+      ProjectionExpression: '#isOnboarded, #name, #birthDate, #gender, #height, #weight, #goal, #calories, #proteins, #carbohydrates, #fats, #type',
       KeyConditionExpression: '#PK = :PK AND begins_with(#SK, :SK)',
       ExpressionAttributeNames: {
         '#PK': 'PK',
         '#SK': 'SK',
+        '#isOnboarded': 'isOnboarded',
         '#name': 'name',
         '#birthDate': 'birthDate',
         '#gender': 'gender',
@@ -41,11 +42,19 @@ export class GetProfileAndGoalByAccountId {
       },
       ExpressionAttributeValues: {
         ':PK': PK,
-        ':SK': `${PK}#`,
+        ':SK': PK,
       },
     });
 
     const { Items = [] } = await dynamodbClient.send(command);
+
+    const account = Items.find((item): item is GetProfileAndGoalByAccountId.AccountItemType => (
+      item.type === AccountItem.TYPE
+    ));
+
+    if (!account) {
+      throw new ResourceNotFound('Account not found.');
+    }
 
     const profile = Items.find((item): item is GetProfileAndGoalByAccountId.ProfileItemType => (
       item.type === ProfileItem.TYPE
@@ -55,46 +64,64 @@ export class GetProfileAndGoalByAccountId {
       item.type === GoalItem.TYPE
     ));
 
-    if (!profile || !goal) {
-      throw new ResourceNotFound('Account not found.');
+    const { type: _accountType, isOnboarded } = account;
+
+    let profileOutput: GetProfileAndGoalByAccountId.ProfileOutput | null = null;
+    if (profile) {
+      const { type: _profileType, ...restProfile } = profile;
+      profileOutput = restProfile;
     }
 
-    const { type: _profileTye, ...restProfile } = profile;
-    const { type: _goalTye, ...restGoal } = goal;
+    let goalOutput: GetProfileAndGoalByAccountId.GoalOutput | null = null;
+    if (goal) {
+      const { type: _goalType, ...restGoal } = goal;
+      goalOutput = restGoal;
+    }
 
     return {
-      profile: restProfile,
-      goal: restGoal,
+      isOnboarded,
+      profile: profileOutput,
+      goal: goalOutput,
     };
   }
 }
 
 export namespace GetProfileAndGoalByAccountId {
 
+  export type AccountItemType = Pick<
+    AccountItem.Item,
+    'isOnboarded' | 'type'
+  >;
+
+  export type ProfileOutput = {
+    name: string;
+    birthDate: string;
+    gender: string;
+    height: number;
+    weight: number;
+    goal: Profile.Goal;
+  }
+
+  export type GoalOutput = {
+    calories: number;
+    proteins: number;
+    carbohydrates: number;
+    fats: number;
+  }
+
   export type ProfileItemType = Pick<
     ProfileItem.ItemType,
-    keyof Output['profile'] | 'type'
+    keyof ProfileOutput | 'type'
   >;
 
   export type GoalItemType = Pick<
     GoalItem.ItemType,
-    keyof Output['goal'] | 'type'
+    keyof GoalOutput | 'type'
   >;
 
   export type Output = {
-    profile: {
-      name: string;
-      birthDate: string;
-      gender: string;
-      height: number;
-      weight: number;
-      goal: Profile.Goal;
-    },
-    goal: {
-      calories: number;
-      proteins: number;
-      carbohydrates: number;
-      fats: number;
-    }
+    isOnboarded: boolean;
+    profile: ProfileOutput | null;
+    goal: GoalOutput | null;
   }
 }

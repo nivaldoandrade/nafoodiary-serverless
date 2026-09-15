@@ -1,3 +1,4 @@
+import { Account } from '@application/entities/Account';
 import { InvalidOAuthGrant } from '@application/errors/application/InvalidOAuthGrant';
 import { AccountsRepository } from '@infra/databases/dynamodb/AccountsRepository';
 import { AuthGateway } from '@infra/gateways/AuthGateway';
@@ -22,16 +23,27 @@ export class OAuthCallbackUseCase {
       code_verifier,
     });
 
-    const { email } = await this.authGateway.getUser(accessToken);
+    const { email, externalId, internalId } = await this.authGateway.getUser(accessToken);
 
-    if (!email) {
-      throw new InvalidOAuthGrant('Google profile returned no email address.');
+    if (!email || !externalId || !internalId) {
+      throw new InvalidOAuthGrant('Missing user data from token.');
     }
 
     const existingAccount = await this.accountsRepository.findByEmail(email);
 
+    if (!existingAccount) {
+      const newAccount = new Account({
+        id: internalId,
+        email,
+        externalId,
+        isOnboarded: false,
+      });
+
+      await this.accountsRepository.create(newAccount);
+    }
+
     return {
-      isOnboarded: !!existingAccount,
+      isOnboarded: existingAccount?.isOnboarded ?? false,
       accessToken,
       refreshToken,
     };

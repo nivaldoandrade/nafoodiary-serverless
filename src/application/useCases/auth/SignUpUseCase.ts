@@ -40,6 +40,7 @@ export class SignUpUseCase {
       id: accountId,
       email,
       externalId,
+      isOnboarded: true,
     });
 
     account.externalId = externalId;

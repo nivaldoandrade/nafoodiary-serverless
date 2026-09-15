@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 
-import { AdminDeleteUserAttributesCommand, AdminDeleteUserCommand, AdminUpdateUserAttributesCommand, ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, GetUserCommand, InitiateAuthCommand, NotAuthorizedException, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { InvalidOAuthGrant } from '@application/errors/application/InvalidOAuthGrant';
+import { AdminDeleteUserAttributesCommand, AdminDeleteUserCommand, AdminUpdateUserAttributesCommand, ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, GetUserCommand, InitiateAuthCommand, NotAuthorizedException, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient } from '@infra/clients/cognitoClient';
 import { Injectable } from '@kernel/decorators/Injectable';
 import { AppConfig } from '@shared/config/AppConfig';
@@ -82,6 +82,7 @@ export class AuthGateway {
       name: attrs['name'] ?? null,
       email: attrs['email'] ?? null,
       externalId: attrs['sub'] ?? null,
+      internalId: attrs['custom:internalId'] ?? null,
     };
   }
 

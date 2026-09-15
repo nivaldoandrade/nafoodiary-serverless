@@ -1,4 +1,5 @@
 import { Controller } from '@application/contracts/Controller';
+import { Profile } from '@application/entities/Profile';
 import { GetProfileAndGoalByAccountId } from '@application/query/GetProfileAndGoalByAccountId';
 import { Injectable } from '@kernel/decorators/Injectable';
 
@@ -15,11 +16,12 @@ export class GetMeController extends Controller<'private'> {
 
     const accountId = request.accountId;
 
-    const { profile, goal } = await this.getProfileAndGoaByAccountId.execute(accountId);
+    const { isOnboarded, profile, goal } = await this.getProfileAndGoaByAccountId.execute(accountId);
 
     return {
       statusCode: 200,
       body: {
+        isOnboarded,
         profile,
         goal,
       },
@@ -30,18 +32,20 @@ export class GetMeController extends Controller<'private'> {
 namespace GetMeController {
 
   export type Response = {
+    isOnboarded: boolean;
     profile: {
       name: string;
       birthDate: string;
       gender: string;
       height: number;
       weight: number;
-    },
+      goal: Profile.Goal;
+    } | null,
     goal: {
       calories: number;
       proteins: number;
       carbohydrates: number;
       fats: number;
-    }
+    } | null
   }
 }

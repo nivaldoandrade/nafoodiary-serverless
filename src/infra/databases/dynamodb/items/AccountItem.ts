@@ -68,6 +68,7 @@ export namespace AccountItem {
     id: string;
     email: string;
     externalId: string;
+    isOnboarded: boolean;
     createdAt: string;
   }
 
