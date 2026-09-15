@@ -12,6 +12,9 @@ statements:
     Action:
       - cognito-idp:AdminDeleteUser
       - cognito-idp:AdminUpdateUserAttributes
+      - cognito-idp:ListUsers
+      - cognito-idp:AdminCreateUser
+      - cognito-idp:AdminLinkProviderForUser
     Resource: !GetAtt UserPool.Arn
   - Effect: Allow
     Action:
