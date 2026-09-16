@@ -193,9 +193,9 @@ Para mais informações: [AWS Credentials](https://www.serverless.com/framework/
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/nivaldoandrade/nafoodiary
+git clone https://github.com/nivaldoandrade/nafoodiary-serverless
 
-cd nafoodiary/api
+cd nafoodiary-serverless/api
 ```
 
 ### 2. Instale as dependências
@@ -220,7 +220,7 @@ Preencha o `.env` com os valores necessários:
 ```env
 COGNITO_EMAIL=noreply@seudominio
 COGNITO_EMAIL_TO_REPLY=suporte@seudominio
-SES_SOURCE_ARN=arn:aws:ses:sa-east-1:xxxxx:configuration-set/xxxxx
+SES_SOURCE_ARN=arn:aws:ses:sa-east-1:xxxxx:identity/seudominio
 
 API_DOMAIN_NAME=
 API_CERTIFICATE_ARN=
@@ -277,6 +277,14 @@ functions:
 ```
 
 O endpoint base da API será: `https://xxx.execute-api.sa-east-1.amazonaws.com`
+
+### 5. Configurar o CDN na zona de DNS (opcional)
+
+Aplica-se quando `MEALS_CDN_DOMAIN_NAME` estiver definido no `.env` (domínio customizado da distribuição CloudFront para os arquivos de refeição). O registro de DNS do domínio precisa apontar para o domain da distribuição.
+
+- **Primeiro deploy**: após o `sls deploy`, consulte o domain da distribuição criada (`sls info` ou `aws cloudfront list-distributions`) e crie na zona de DNS do domínio um registro **CNAME** de `MEALS_CDN_DOMAIN_NAME` apontando para esse domain (ex.: `dxxxxxxxxxxxx.cloudfront.net`);
+- **Recriação da stack**: antes de deployar, garanta que o CNAME **não aponte mais** para a distribuição antiga/deletada (caso contrário o CloudFront rejeita a criação do alias). Após o deploy, recrie o CNAME apontando para o domain da nova distribuição;
+- Sem `MEALS_CDN_DOMAIN_NAME`, a distribuição usa o domain padrão `*.cloudfront.net` — nenhuma ação é necessária no DNS.
 
 ## Endpoints
 
@@ -649,7 +657,7 @@ O endpoint base da API será: `https://xxx.execute-api.sa-east-1.amazonaws.com`
 | --------------------------- | ------------------------------------------------------- | ----------- |
 | `COGNITO_EMAIL`             | Endereço de email remetente para o Cognito              | Sim         |
 | `COGNITO_EMAIL_TO_REPLY`    | Endereço de email para respostas                        | Sim         |
-| `SES_SOURCE_ARN`            | ARN do configuration set do SES                         | Sim         |
+| `SES_SOURCE_ARN`            | ARN da identidade SES verificada usada pelo Cognito       | Sim         |
 | `API_DOMAIN_NAME`           | Domínio personalizado da API (ex: `api.nafoodiary.com`) | Não         |
 | `API_CERTIFICATE_ARN`       | ARN do certificado ACM para o domínio da API            | Não         |
 | `MEALS_CDN_DOMAIN_NAME`     | Domínio personalizado do CloudFront para arquivos       | Não         |
@@ -741,6 +749,40 @@ sls dev
 sls remove
 ```
 
+## Recriando a Stack do Zero
+
+Necessário quando é preciso destruir e recriar todos os recursos, por exemplo depois de uma falha de deploy com resources presos. **Alerta: apaga todos os usuários do UserPool e os dados da DynamoDB** (ok em ambiente de dev sem dados reais).
+
+1. Remova o stack e aguarde a deleção terminar (o CloudFormation pode levar alguns minutos). Não faça o deploy antes disso — o Framework falha com "Stack ... is in DELETE_IN_PROGRESS state and can not be updated":
+
+   ```bash
+   sls remove
+
+   aws cloudformation describe-stacks --stack-name api-{stage}
+   # Repita até o comando responder "does not exist"
+   ```
+
+2. O `sls remove` não apaga alguns resíduos que podem travar o novo deploy — remova manualmente:
+
+   - **Log group do custom resource** (o Framework não remove): 
+     ```bash
+     aws logs delete-log-group --log-group-name /aws/lambda/api-{stage}-custom-resource-existing-s3
+     ```
+   - **Bucket órfão** do `MealsBucket` (`DeletionPolicy: Retain`), se ainda existir:
+     ```bash
+     aws s3 rb s3://nafoodiary-api-{stage}-meals-bucket --force
+     ```
+
+3. Caso use `MEALS_CDN_DOMAIN_NAME`: garanta que o CNAME na zona de DNS **não aponte para a distribuição CloudFront antiga/deletada** (o CloudFront rejeita criar o alias enquanto o DNS apontar para outro CloudFront). Corrija o registro de DNS antes de continuar — ver "Configurar o CDN na zona de DNS" no passo a passo.
+
+4. Aguarde o "cooldown" do domínio do UserPool (`nafoodiary.auth.sa-east-1.amazoncognito.com`), se o deploy falhar com domínio indisponível, aguarde alguns minutos e rode o deploy novamente.
+
+5. Rode o deploy e recrie o CNAME do CDN apontando para o domain da nova distribuição:
+
+   ```bash
+   sls deploy
+   ```
+
 ## Troubleshooting
 
 ### Deploy falha com erro de permissão
@@ -778,6 +820,22 @@ sls remove
 - Verifique se o arquivo de áudio não está corrompido;
 - Confirme que o formato é suportado (M4A, 3GP, WebM);
 - Verifique se a `OPENAI_API_KEY` tem acesso ao modelo `gpt-4o-mini-transcribe`.
+
+### "The provider Google does not exist for User Pool"
+- Erro de corrida ao criar o `UserPoolClient` antes do `GoogleIdentityProvider` (o client referencia o provider `Google` por nome);
+- Já mitigado com `DependsOn: GoogleIdentityProvider` no `UserPoolClient` em `sls/resources/userPool.yaml`; se reaparecer, é uma corrida de criação do CloudFormation — reexecute o deploy.
+
+### CloudFront: "incorrectly configured DNS record that points to another CloudFront distribution"
+- O CNAME de `MEALS_CDN_DOMAIN_NAME` está apontando para uma distribuição CloudFront antiga/deletada;
+- Corrija o registro de DNS (aponte para longe ou apague), rode o `sls deploy` e recrie o CNAME apontando para o domain da nova distribuição (ver "Configurar o CDN na zona de DNS").
+
+### Deploy falha porque o log group do custom resource existe
+- O `sls remove` não apaga o log group `/aws/lambda/api-{stage}-custom-resource-existing-s3`;
+- Remova manualmente antes de um novo deploy:
+
+  ```bash
+  aws logs delete-log-group --log-group-name /aws/lambda/api-{stage}-custom-resource-existing-s3
+  ```
 
 ### Alarme de Dead Letter Queue
 - Verifique o email configurado em `DLQ_ALARM_EMAIL`;

@@ -32,10 +32,6 @@ Resources:
             Mutable: false
             AttributeDataType: String
             Required: false
-          - Name: internalSocialId
-            Mutable: true
-            AttributeDataType: String
-            Required: false
         LambdaConfig:
           PreTokenGenerationConfig:
             LambdaArn: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${sls:stage}-preTokenGenerationTrigger'
@@ -51,6 +47,7 @@ Resources:
 
     UserPoolClient:
       Type: AWS::Cognito::UserPoolClient
+      DependsOn: GoogleIdentityProvider
       Properties:
         ClientName: ${self:service}-${sls:stage}-UserPoolClient
         UserPoolId: !Ref UserPool
