@@ -1,13 +1,12 @@
+import { Profile } from '@application/entities/Profile';
 import { EmailAlreadyInUse } from '@application/errors/application/EmailAlreadyInUse';
 import { InvalidOAuthGrant } from '@application/errors/application/InvalidOAuthGrant';
-import { Account } from '@application/entities/Account';
-import { Profile } from '@application/entities/Profile';
+import { ResourceNotFound } from '@application/errors/application/ResourceNotFound';
 import { GoalCalculator } from '@application/services/GoalCalculator';
 import { AccountsRepository } from '@infra/databases/dynamodb/AccountsRepository';
 import { SignUpUOW } from '@infra/databases/dynamodb/uow/SignUpUOW';
 import { AuthGateway } from '@infra/gateways/AuthGateway';
 import { Injectable } from '@kernel/decorators/Injectable';
-import { generateUniqueId } from '@shared/utils/generateUniqueId';
 
 @Injectable()
 export class CompleteOnboardingUseCase {
@@ -33,39 +32,25 @@ export class CompleteOnboardingUseCase {
 
     const existingAccount = await this.accountRepository.findByEmail(email);
 
-    if (existingAccount && existingAccount.externalId === externalId) {
-      return;
+    if (!existingAccount) {
+      throw new ResourceNotFound('Account not found.');
     }
 
-    if (existingAccount) {
+    if (existingAccount.externalId !== externalId) {
       throw new EmailAlreadyInUse();
     }
 
-    const accountId = generateUniqueId();
-
-    const account = new Account({
-      id: accountId,
-      email,
-      externalId,
-    });
-
     const profile = new Profile({
-      accountId,
+      accountId: existingAccount.id,
       ...profileInput,
       name,
     });
 
     const goal = GoalCalculator.calculate(profile);
 
-    await this.authGateway.saveInternalId({ externalId, internalId: accountId });
+    existingAccount.isOnboarded = true;
 
-    try {
-      await this.signUpUOW.run({ account, goal, profile });
-    } catch (error) {
-      await this.authGateway.deleteInternalId(externalId);
-
-      throw error;
-    }
+    await this.signUpUOW.run({ account: existingAccount, goal, profile });
   }
 }
 

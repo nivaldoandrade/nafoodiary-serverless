@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 
 import { InvalidOAuthGrant } from '@application/errors/application/InvalidOAuthGrant';
-import { AdminDeleteUserAttributesCommand, AdminDeleteUserCommand, AdminUpdateUserAttributesCommand, ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, GetUserCommand, InitiateAuthCommand, NotAuthorizedException, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { AdminDeleteUserCommand, ConfirmForgotPasswordCommand, ForgotPasswordCommand, GetTokensFromRefreshTokenCommand, GetUserCommand, InitiateAuthCommand, NotAuthorizedException, SignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient } from '@infra/clients/cognitoClient';
 import { Injectable } from '@kernel/decorators/Injectable';
 import { AppConfig } from '@shared/config/AppConfig';
@@ -84,28 +84,6 @@ export class AuthGateway {
       externalId: attrs['sub'] ?? null,
       internalId: attrs['custom:internalId'] ?? null,
     };
-  }
-
-  async saveInternalId({ externalId, internalId }: AuthGateway.SaveInternalIdParams) {
-    const command = new AdminUpdateUserAttributesCommand({
-      UserPoolId: this.config.envAuth.cognito.userPoolId,
-      Username: externalId,
-      UserAttributes: [
-        { Name: 'custom:internalSocialId', Value: internalId },
-      ],
-    });
-
-    await cognitoClient.send(command);
-  }
-
-  async deleteInternalId(externalId: string) {
-    const command = new AdminDeleteUserAttributesCommand({
-      UserPoolId: this.config.envAuth.cognito.userPoolId,
-      Username: externalId,
-      UserAttributeNames: ['custom:internalSocialId'],
-    });
-
-    await cognitoClient.send(command);
   }
 
   async signIn({ email, password }: AuthGateway.SignIn['params']): Promise<AuthGateway.SignIn['result']> {
@@ -243,11 +221,6 @@ namespace AuthGateway {
       accessToken: string;
       refreshToken: string;
     }
-  }
-
-  export type SaveInternalIdParams = {
-    externalId: string;
-    internalId: string;
   }
 
   export type UserAttributes = { Name?: string; Value?: string }[] | undefined;
