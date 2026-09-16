@@ -15,6 +15,7 @@ statements:
       - cognito-idp:ListUsers
       - cognito-idp:AdminCreateUser
       - cognito-idp:AdminLinkProviderForUser
+      - cognito-idp:AdminSetUserPassword
     Resource: !GetAtt UserPool.Arn
   - Effect: Allow
     Action:

@@ -1,4 +1,4 @@
-import { AdminCreateUserCommand, AdminLinkProviderForUserCommand, paginateListUsers, UserType } from '@aws-sdk/client-cognito-identity-provider';
+import { AdminCreateUserCommand, AdminLinkProviderForUserCommand, AdminSetUserPasswordCommand, paginateListUsers, UserType } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient } from '@infra/clients/cognitoClient';
 import { generateUniqueId } from '@shared/utils/generateUniqueId';
 import { PreSignUpTriggerEvent } from 'aws-lambda';
@@ -85,6 +85,7 @@ async function createNative({ email, name, userPoolId }: ICreateNativeParams) {
     UserAttributes: [
       { Name: 'email_verified', Value: 'true' },
       { Name: 'name', Value: name },
+      { Name: 'email', Value: email },
       { Name: 'custom:internalId', Value: internalId },
     ],
   });
@@ -94,6 +95,16 @@ async function createNative({ email, name, userPoolId }: ICreateNativeParams) {
   if (!User) {
     throw new Error(`Failed to create native user for email "${email}".`);
   }
+
+  const password = generateUniqueId();
+  const setPasswordCommand = new AdminSetUserPasswordCommand({
+    UserPoolId: userPoolId,
+    Username: email,
+    Password: password,
+    Permanent: true,
+  });
+
+  await cognitoClient.send(setPasswordCommand);
 
   return User;
 }
