@@ -3,10 +3,12 @@ import { CreateMealBody, createMealSchema } from '@application/controllers/meal/
 import { Meal } from '@application/entities/Meal';
 import { CreateMealUseCase } from '@application/useCases/meal/CreateMealUseCase';
 import { Injectable } from '@kernel/decorators/Injectable';
+import { RateLimit } from '@kernel/decorators/RateLimit';
 import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(createMealSchema)
+@RateLimit({ scope: 'account', limit: 10, windowSeconds: 3600 })
 export class CreateMealController extends Controller<'private'> {
 
   constructor(private readonly createMealUseCase: CreateMealUseCase) {

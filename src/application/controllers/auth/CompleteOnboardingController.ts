@@ -2,10 +2,12 @@ import { Controller } from '@application/contracts/Controller';
 import { CompleteOnboardingBody, completeOnboardingSchema } from '@application/controllers/auth/schemas/completeOnboardingSchema';
 import { CompleteOnboardingUseCase } from '@application/useCases/auth/CompleteOnboardingUseCase';
 import { Injectable } from '@kernel/decorators/Injectable';
+import { RateLimit } from '@kernel/decorators/RateLimit';
 import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(completeOnboardingSchema)
+@RateLimit({ scope: 'ip', limit: 30, windowSeconds: 900 })
 export class CompleteOnboardingController extends Controller<'public'> {
 
   constructor(

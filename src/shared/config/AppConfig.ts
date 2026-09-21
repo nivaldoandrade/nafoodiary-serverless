@@ -26,6 +26,7 @@ export class AppConfig {
     this.db = {
       dynamodb: {
         mainTable: env.MAIN_TABLE_NAME,
+        rateLimitTable: env.RATE_LIMIT_TABLE_NAME,
       },
     };
 
@@ -57,6 +58,7 @@ namespace AppConfig {
   export type Db = {
     dynamodb: {
       mainTable: string;
+      rateLimitTable: string;
     }
   }
 

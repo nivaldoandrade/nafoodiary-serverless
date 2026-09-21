@@ -10,6 +10,11 @@ statements:
       - !Sub "${MainTable.Arn}/index/*"
   - Effect: Allow
     Action:
+      - dynamodb:GetItem
+      - dynamodb:UpdateItem
+    Resource: !GetAtt RateLimitTable.Arn
+  - Effect: Allow
+    Action:
       - cognito-idp:AdminDeleteUser
       - cognito-idp:AdminUpdateUserAttributes
       - cognito-idp:ListUsers

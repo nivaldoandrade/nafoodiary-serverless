@@ -4,6 +4,9 @@ import { $ZodError } from 'zod/v4/core';
 import { Controller } from '@application/contracts/Controller';
 import { ApplicationError } from '@application/errors/application/ApplicationError';
 import { HttpError } from '@application/errors/http/HttpError';
+import { RateLimitExceeded } from '@application/errors/http/RateLimitExceeded';
+import { RateLimitService } from '@application/services/RateLimitService';
+import { RateLimitRule, getRateLimitRules } from '@kernel/decorators/RateLimit';
 import { Constructor, Registry } from '@kernel/di/Registry';
 import { lambdaHttpBodyParser } from '@main/utils/lambdaHttpBodyParser';
 import { lambdaHttpErrorResponse } from '@main/utils/lambdaHttpErrorResponse';
@@ -35,6 +38,47 @@ export function lambdaHttpAdapter(controllerImpl: Constructor<Controller<'privat
       const request = accountId
         ? { body, params, queryParams, accountId }
         : { body, params, queryParams };
+
+      const rateLimitRules = getRateLimitRules(controller);
+
+      if (rateLimitRules.length > 0) {
+        const rateLimitService = Registry.getInstance().resolver(RateLimitService);
+
+        for (const rule of rateLimitRules) {
+          const key = resolveRateLimitKey(rule, request, event);
+
+          if (!key) {
+            continue;
+          }
+
+          try {
+            await rateLimitService.check({
+              key,
+              scope: rule.scope,
+              limit: rule.limit,
+              windowSeconds: rule.windowSeconds,
+            });
+          } catch (error) {
+            if (error instanceof RateLimitExceeded) {
+              const retryAfter = rule.windowSeconds - (Math.floor(Date.now() / 1000) % rule.windowSeconds);
+
+              return {
+                statusCode: error.statusCode,
+                body: JSON.stringify({
+                  error: error.code,
+                  message: error.message,
+                }),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Retry-After': String(retryAfter),
+                },
+              };
+            }
+
+            throw error;
+          }
+        }
+      }
 
       const {
         statusCode,
@@ -74,4 +118,24 @@ export function lambdaHttpAdapter(controllerImpl: Constructor<Controller<'privat
       });
     }
   };
+}
+
+function resolveRateLimitKey(
+  rule: RateLimitRule,
+  request: Controller.Request<'private' | 'public'>,
+  event: Event,
+): string | undefined {
+  switch (rule.scope) {
+    case 'ip':
+      return `${event.routeKey}#${event.requestContext.http.sourceIp}`;
+    case 'account':
+      return 'accountId' in request ? request.accountId : undefined;
+    case 'email': {
+      const email = request.body?.[rule.field ?? 'email'];
+      return typeof email === 'string' ? email.toLowerCase() : undefined;
+    }
+    default:
+      return undefined;
+  }
+
 }

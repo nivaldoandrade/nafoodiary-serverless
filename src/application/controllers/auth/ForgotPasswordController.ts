@@ -2,10 +2,13 @@ import { Controller } from '@application/contracts/Controller';
 import { ForgotPasswordBody, forgotPasswordSchema } from '@application/controllers/auth/schemas/forgotPasswordSchema';
 import { ForgotPasswordUseCase } from '@application/useCases/auth/ForgotPasswordUseCase';
 import { Injectable } from '@kernel/decorators/Injectable';
+import { RateLimit } from '@kernel/decorators/RateLimit';
 import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(forgotPasswordSchema)
+@RateLimit({ scope: 'ip', limit: 5, windowSeconds: 900 })
+@RateLimit({ scope: 'email', field: 'email', limit: 5, windowSeconds: 3600 })
 export class ForgotPasswordController extends Controller<'public'> {
 
   constructor(private readonly forgotPasswordUseCase: ForgotPasswordUseCase) {

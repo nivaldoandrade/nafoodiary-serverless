@@ -14,6 +14,7 @@ API serverless para um diário alimentar inteligente com inteligência artificia
 - **Processamento assíncrono**: Fila SQS para processamento de refeições com retry automático;
 - **CDN para arquivos**: CloudFront para servir os arquivos de refeição;
 - **Alarmes**: Notificação por email quando refeições falham (Dead Letter Queue);
+- **Rate limiting**: Proteção por IP, e-mail e conta com resposta `429 RATE_LIMIT_EXCEEDED` e header `Retry-After` — implementado em código com contadores atômicos no DynamoDB (sem WAF);
 
 ## Arquitetura
 
@@ -315,6 +316,38 @@ Aplica-se quando `MEALS_CDN_DOMAIN_NAME` estiver definido no `.env` (domínio cu
 | GET    | `/meals?date=YYYY-MM-DD` | Lista refeições de um dia específico                   | JWT          |
 | GET    | `/meals/{id}`            | Retorna uma refeição por ID com detalhes dos alimentos | JWT          |
 
+## Rate Limit
+
+Proteção contra abuso e excesso de requests, implementada **em código** (sem AWS WAF): o decorator `@RateLimit` marca os controllers, o `lambdaHttpAdapter` aplica o enforcement centralizado e contadores **atômicos e condicionais** no DynamoDB (`RateLimitTable`) controlam a janela fixa. Requests bloqueados **não gravam** no banco, e a chave de IP é **por rota** (`RL#ip#<rota>#<ip>`).
+
+**Custo:** o bloqueio ocorre dentro da Lambda, então um `429` ainda custa API Gateway (~$1,59/1M na `sa-east-1`) + invocação Lambda ($0,20/1M). Requests bloqueados **não** gravam no DynamoDB e **não** chamam Cognito/OpenAI — o volume atual fica coberto pelo free tier (1M requests/mês). Bloquear antes da invocação (WAF rate-based, ~$6/mês) fica como evolução futura.
+
+**Limites por rota:**
+
+| Rota | Escopo | Limite |
+|---|---|---|
+| `POST /auth/sign-up` | IP | 5 / 15min |
+| `POST /auth/sign-in` | IP + email | 10 / 15min cada |
+| `POST /auth/refresh-token` | IP | 60 / 15min |
+| `POST /auth/forgot-password` | IP + email | 5 / 15min (IP) e 5 / 1h (email) |
+| `POST /auth/confirmation-forgot-password` | IP | 10 / 15min |
+| `POST /auth/oauth/callback` | IP | 30 / 15min |
+| `POST /auth/complete-onboarding` | IP | 30 / 15min |
+| `POST /create-meal` | conta | 10 / 1h |
+
+**Resposta `429`:**
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "..."
+  }
+}
+```
+
+com header `Retry-After` em segundos.
+
 ### Exemplos de Uso
 
 #### Sign Up -> `/auth/sign-up`
@@ -613,6 +646,11 @@ Aplica-se quando `MEALS_CDN_DOMAIN_NAME` estiver definido no `.env` (domínio cu
   - Point-in-time recovery: 35 dias
   - GSI1 para consultas por email e data
 
+- **Table**: `api-{stage}-RateLimitTable`
+  - Contadores de rate limit por janela (`PK = RL#<scope>#<chave>`, `SK = bucket da janela`)
+  - TTL em `expiresAt` para expirar janelas automaticamente
+  - Billing: PAY_PER_REQUEST
+
 ### Cognito
 
 - **UserPool**: `api-{stage}-UserPool`
@@ -673,6 +711,7 @@ Aplica-se quando `MEALS_CDN_DOMAIN_NAME` estiver definido no `.env` (domínio cu
 | `COGNITO_USER_POOL_ID`  | `!Ref UserPool`                       |
 | `COGNITO_CLIENT_SECRET` | `!GetAtt UserPoolClient.ClientSecret` |
 | `MAIN_TABLE_NAME`       | `!Ref MainTable`                      |
+| `RATE_LIMIT_TABLE_NAME` | `!Ref RateLimitTable`                 |
 | `MEALS_BUCKET_NAME`     | `!Ref MealsBucket`                    |
 | `MEALS_CDN_DOMAIN_NAME` | CloudFront domain ou fallback do env  |
 | `MEALS_QUEUE_URL`       | `!Ref MealsQueue`                     |
@@ -682,7 +721,7 @@ Aplica-se quando `MEALS_CDN_DOMAIN_NAME` estiver definido no `.env` (domínio cu
 ```
 src/
 ├── kernel/                    # Camada de framework/DI
-│   ├── decorators/            # @Injectable(), @Schema()
+│   ├── decorators/            # @Injectable(), @Schema(), @RateLimit()
 │   └── di/                    # Registry (container de DI singleton)
 │
 ├── shared/                    # Utilitários compartilhados
@@ -701,7 +740,7 @@ src/
 ├── application/               # Lógica de negócio
 │   ├── contracts/             # Controller, IEventHandler, ISQSHandler
 │   ├── entities/              # Account, Profile, Goal, Meal
-│   ├── services/              # GoalCalculator (TDEE/BMR)
+│   ├── services/              # GoalCalculator, RateLimitService
 │   ├── useCases/              # Use cases organizados por domínio
 │   ├── controllers/           # Controllers com schemas Zod
 │   ├── query/                 # Queries diretas ao DynamoDB
@@ -725,6 +764,7 @@ src/
 - **Injeção de Dependência customizada**: Container DI singleton (`Registry`) com decorator `@Injectable()` usando `reflect-metadata` para resolução automática de construtores;
 - **Schema Validation Decorator**: `@Schema(zodSchema)` nos controllers para validação automática do request body;
 - **Controller Pattern**: Classe abstrata `Controller<'public' | 'private'>` distinguindo rotas autenticadas vs públicas;
+- **Rate Limit declarativo**: decorator `@RateLimit` (IP/email/conta) nos controllers + enforce centralizado no `lambdaHttpAdapter` com contadores atômicos condicionais no DynamoDB;
 - **Unit of Work**: Transações DynamoDB (`TransactWriteCommand`) para escrita atômica de múltiplas entidades;
 - **Event-Driven Processing**: S3 Event -> SQS -> Lambda para processamento assíncrono de refeições;
 - **Single-Table DynamoDB**: Todas as entidades em uma tabela com chaves compostas e GSIs;
@@ -805,6 +845,12 @@ Necessário quando é preciso destruir e recriar todos os recursos, por exemplo 
 - Verifique se o header `Authorization: Bearer <token>` está sendo enviado;
 - Confirme que o token não expirou (validade de 1 dia);
 - Use o endpoint `/auth/refresh-token` para obter um novo token.
+
+### Erro 429 / Rate limit excedido
+- Verifique o header `Retry-After` da resposta para saber quando tentar novamente;
+- Confirme qual escopo estourou (IP, email ou conta) na tabela `RateLimitTable` no DynamoDB (consulta por `PK = RL#<scope>#<chave>`);
+- Requests bloqueados **não** incrementam o contador — o limite é por janela fixa e recomeça ao expirar;
+- Se precisar ajustar um limite, basta alterar o decorator `@RateLimit` no controller correspondente.
 
 ### Erro de CORS
 - Verifique se o CORS está habilitado no `serverless.yml` (`httpApi.cors: true`);

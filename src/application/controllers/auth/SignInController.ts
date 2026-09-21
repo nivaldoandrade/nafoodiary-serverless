@@ -2,10 +2,13 @@ import { Controller } from '@application/contracts/Controller';
 import { SignInBody, signInSchema } from '@application/controllers/auth/schemas/signInSchema';
 import { SignInUseCase } from '@application/useCases/auth/SignInUseCase';
 import { Injectable } from '@kernel/decorators/Injectable';
+import { RateLimit } from '@kernel/decorators/RateLimit';
 import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(signInSchema)
+@RateLimit({ scope: 'ip', limit: 10, windowSeconds: 900 })
+@RateLimit({ scope: 'email', field: 'email', limit: 10, windowSeconds: 900 })
 export class SignInController extends Controller<'public'> {
 
   constructor(

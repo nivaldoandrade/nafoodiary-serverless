@@ -2,10 +2,12 @@ import { Controller } from '@application/contracts/Controller';
 import { OAuthCallbackBody, oauthCallbackSchema } from '@application/controllers/auth/schemas/oauthCallbackSchema';
 import { OAuthCallbackUseCase } from '@application/useCases/auth/OAuthCallbackUseCase';
 import { Injectable } from '@kernel/decorators/Injectable';
+import { RateLimit } from '@kernel/decorators/RateLimit';
 import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(oauthCallbackSchema)
+@RateLimit({ scope: 'ip', limit: 30, windowSeconds: 900 })
 export class OAuthCallbackController extends Controller<'public'> {
 
   constructor(

@@ -2,10 +2,12 @@ import { Controller } from '@application/contracts/Controller';
 import { RefreshTokenBody, refreshTokenSchema } from '@application/controllers/auth/schemas/refreshTokenSchema';
 import { RefreshTokenUseCase } from '@application/useCases/auth/RefreshTokenUseCase';
 import { Injectable } from '@kernel/decorators/Injectable';
+import { RateLimit } from '@kernel/decorators/RateLimit';
 import { Schema } from '@kernel/decorators/Schema';
 
 @Injectable()
 @Schema(refreshTokenSchema)
+@RateLimit({ scope: 'ip', limit: 60, windowSeconds: 900 })
 export class RefreshTokenController extends Controller<'public'> {
 
   constructor(private readonly refreshTokenUseCase: RefreshTokenUseCase) {
