@@ -62,17 +62,14 @@ export function lambdaHttpAdapter(controllerImpl: Constructor<Controller<'privat
             if (error instanceof RateLimitExceeded) {
               const retryAfter = rule.windowSeconds - (Math.floor(Date.now() / 1000) % rule.windowSeconds);
 
-              return {
+              return lambdaHttpErrorResponse({
                 statusCode: error.statusCode,
-                body: JSON.stringify({
-                  error: error.code,
-                  message: error.message,
-                }),
+                code: error.code,
+                message: error.message,
                 headers: {
-                  'Content-Type': 'application/json',
                   'Retry-After': String(retryAfter),
                 },
-              };
+              });
             }
 
             throw error;
