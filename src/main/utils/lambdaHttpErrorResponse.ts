@@ -13,9 +13,7 @@ export function lambdaHttpErrorResponse({ headers, statusCode, code, message }: 
 
   return lambdaHttpResponse(statusCode, {
     error: {
-      code,
-      message,
+      code, message,
     },
-    headers,
-  });
+  }, headers);
 }
